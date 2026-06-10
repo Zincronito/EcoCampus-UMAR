@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Campus {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  code      String   @unique
+  address   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  locations Location[]
+
+  @@map("campuses")
+}
+
+model Location {
+  id             String   @id @default(cuid())
+  name           String
+  sector         String?
+  locationType   String?
+  description    String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  campusId String
+  campus   Campus @relation(fields: [campusId], references: [id])
+
+  containers Container[]
+
+  @@map("locations")
+  @@index([campusId])
+}
+
+model WasteCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  color       String
+  icon        String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  containers Container[]
+
+  @@map("waste_categories")
+}
+
+model Container {
+  id              String   @id @default(cuid())
+  containerCode   String   @unique
+  tareWeight      Float
+  volumeLiters    Float?
+  status          String   @default("activo")
+  qrGenerated     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  wasteCategoryId String
+  wasteCategory   WasteCategory @relation(fields: [wasteCategoryId], references: [id])
+
+  locationId      String
+  location        Location @relation(fields: [locationId], references: [id])
+
+  collectionRecords CollectionRecord[]
+  incidents         Incident[]
+
+  @@map("containers")
+  @@index([wasteCategoryId])
+  @@index([locationId])
+}
+
+model User {
+  id              String   @id @default(cuid())
+  employeeId      String   @unique
+  fullName        String
+  email           String?  @unique
+  phone           String?
+  photoUrl        String?
+  hashedPin       String?
+  googleId        String?  @unique
+  role            String   @default("collector")
+  shift           String?
+  assignedSector  String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  collectionRecords CollectionRecord[]
+  incidents         Incident[]
+
+  @@map("users")
+}
+
+model CollectionRecord {
+  id                    String   @id @default(cuid())
+  grossWeight           Float
+  netWeight             Float?
+  fillLevel             String
+  condition             String
+  separationLevel       String
+  syncedFromOffline     Boolean  @default(false)
+  deviceRecordedAt      String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  containerId String
+  container   Container @relation(fields: [containerId], references: [id])
+
+  collectorId String
+  collector   User @relation(fields: [collectorId], references: [id])
+
+  incident Incident?
+
+  @@map("collection_records")
+  @@index([containerId])
+  @@index([collectorId])
+}
+
+model Incident {
+  id                    String   @id @default(cuid())
+  description           String
+  quickTag              String?
+  photoUrl              String?
+  status                String   @default("pendiente")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  collectionRecordId    String?  @unique
+  collectionRecord      CollectionRecord? @relation(fields: [collectionRecordId], references: [id])
+
+  reportedById          String
+  reportedBy            User @relation(fields: [reportedById], references: [id])
+
+  containerId           String
+  container             Container @relation(fields: [containerId], references: [id])
+
+  @@map("incidents")
+  @@index([reportedById])
+  @@index([containerId])
+}
