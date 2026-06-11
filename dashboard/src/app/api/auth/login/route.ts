@@ -5,10 +5,10 @@ import { verifyPin } from "@/lib/password";
 
 export async function POST(req: NextRequest) {
   try {
-    console.log("📍 Iniciando login...");
+    console.log("Iniciando login...");
     
     const body = await req.json();
-    console.log("📍 Body recibido:", body);
+    console.log("Body recibido:", body);
     
     const { employeeId, pin } = body;
 
@@ -19,11 +19,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("📍 Buscando usuario:", employeeId);
+    console.log("Buscando usuario:", employeeId);
     const user = await prisma.user.findUnique({
       where: { employeeId },
     });
-    console.log("📍 Usuario encontrado:", user);
+    console.log("Usuario encontrado:", user);
 
     if (!user || !user.hashedPin) {
       return NextResponse.json(
@@ -32,9 +32,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("📍 Verificando PIN...");
+    console.log("Verificando PIN...");
     const pinValid = await verifyPin(pin, user.hashedPin);
-    console.log("📍 PIN válido:", pinValid);
+    console.log("PIN válido:", pinValid);
     
     if (!pinValid) {
       return NextResponse.json(
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("📍 Creando token...");
+    console.log("Creando token...");
     const token = await createToken(user.id, user.role);
 
     return NextResponse.json({
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("❌ Error en login:", error);
+    console.error("Error en login:", error);
     return NextResponse.json(
       { error: "Error interno del servidor", details: String(error) },
       { status: 500 }
