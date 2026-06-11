@@ -3,50 +3,65 @@ import { prisma } from "@/lib/prisma";
 import { createToken } from "@/lib/auth";
 import { verifyPin } from "@/lib/password";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
-    console.log("Iniciando login...");
-    
     const body = await req.json();
-    console.log("Body recibido:", body);
-    
     const { employeeId, pin } = body;
 
     if (!employeeId || !pin) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: "employeeId y pin requeridos" },
         { status: 400 }
       );
+      Object.entries(corsHeaders).forEach(([key, value]) => {
+        response.headers.set(key, value);
+      });
+      return response;
     }
 
-    console.log("Buscando usuario:", employeeId);
     const user = await prisma.user.findUnique({
       where: { employeeId },
     });
-    console.log("Usuario encontrado:", user);
 
     if (!user || !user.hashedPin) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: "Credenciales inválidas" },
         { status: 401 }
       );
+      Object.entries(corsHeaders).forEach(([key, value]) => {
+        response.headers.set(key, value);
+      });
+      return response;
     }
 
-    console.log("Verificando PIN...");
     const pinValid = await verifyPin(pin, user.hashedPin);
-    console.log("PIN válido:", pinValid);
-    
     if (!pinValid) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: "Credenciales inválidas" },
         { status: 401 }
       );
+      Object.entries(corsHeaders).forEach(([key, value]) => {
+        response.headers.set(key, value);
+      });
+      return response;
     }
 
-    console.log("Creando token...");
     const token = await createToken(user.id, user.role);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       token,
       user: {
         id: user.id,
@@ -55,11 +70,19 @@ export async function POST(req: NextRequest) {
         role: user.role,
       },
     });
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    return response;
   } catch (error) {
-    console.error("Error en login:", error);
-    return NextResponse.json(
-      { error: "Error interno del servidor", details: String(error) },
+    console.error("❌ Error en login:", error);
+    const response = NextResponse.json(
+      { error: "Error interno del servidor" },
       { status: 500 }
     );
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    return response;
   }
 }
