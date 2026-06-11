@@ -1,39 +1,55 @@
+version: '3.8'
+
 services:
-  # PostgreSQL — Base de datos main
   db:
     image: postgres:16-alpine
-    container_name: ecocampus_db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
+    environment:
+      POSTGRES_USER: ecocampus
+      POSTGRES_PASSWORD: ecocampus_dev_2024
+      POSTGRES_DB: ecocampus_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U ecocampus"]
+      interval: 10s
       timeout: 5s
       retries: 5
 
-  # MinIO para el Almacenamiento de fotos de incidencias
-
   minio:
     image: minio/minio:latest
-    container_name: ecocampus_minio
-    restart: unless-stopped
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
       - "9000:9000"
       - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
-    command: server /data --console-address ":9001"
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://ecocampus:ecocampus_dev_2024@db:5432/ecocampus_db
+      SECRET_KEY: tu-clave-secreta
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  dashboard:
+    build: ./dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://ecocampus:ecocampus_dev_2024@db:5432/ecocampus_db
+    depends_on:
+      - db
+    command: npm start
 
 volumes:
   postgres_data:
