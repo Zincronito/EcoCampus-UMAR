@@ -21,11 +21,13 @@ class UUIDMixin:
 class TimestampMixin:
     """Agrega created_at y updated_at automáticos a cualquier modelo."""
     created_at: Mapped[datetime] = mapped_column(
+        "createdAt",
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         server_default=func.now(),
     )
     updated_at: Mapped[datetime] = mapped_column(
+        "updatedAt",
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         server_default=func.now(),
