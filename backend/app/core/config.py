@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     # ── Base de datos 
     POSTGRES_USER: str = "ecocampus"
     POSTGRES_PASSWORD: str = "ecocampus_dev_2024"
-    POSTGRES_HOST: str = "localhost"
+    POSTGRES_HOST: str = "db"
     POSTGRES_PORT: int = 5432
     POSTGRES_DB: str = "ecocampus_db"
 
