@@ -27,9 +27,10 @@ class CollectionRecordCreate(BaseModel):
     """Schema para crear un nuevo reporte de recolección"""
     gross_weight: float
     net_weight: float | None = None
-    fill_level: str  # "85", "95", etc
-    condition: str  # "good", "fair", "damaged"
-    separation_level: str  # "1", "2", "3"
+    fill_level: str
+    physical_state: str  # Nuevo campo
+    condition: str
+    separation_level: str
     container_id: uuid.UUID
     collector_id: uuid.UUID
     synced_from_offline: bool = False
@@ -42,6 +43,7 @@ class CollectionRecordResponse(BaseModel):
     gross_weight: float
     net_weight: float | None
     fill_level: str
+    physical_state: str  # Nuevo campo
     condition: str
     separation_level: str
     container_id: uuid.UUID
@@ -95,6 +97,7 @@ async def create_collection_record(
             gross_weight=record.gross_weight,
             net_weight=record.net_weight,
             fill_level=record.fill_level,
+            physical_state=record.physical_state,  # Nuevo campo
             condition=record.condition,
             separation_level=record.separation_level,
             container_id=record.container_id,

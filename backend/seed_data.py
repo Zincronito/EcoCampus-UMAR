@@ -40,29 +40,38 @@ async def seed():
                 code="PA",
                 address="Carretera Costera, Puerto Ángel, Oaxaca"
             )
-            campus_zipolite = Campus(
-                name="Campus Zipolite",
-                code="ZIP",
-                address="Calle Principal, Zipolite, Oaxaca"
+            campus_puerto_escondido = Campus(
+                name="Campus Puerto Escondido",
+                code="PE",
+                address="Carretera Costera, Puerto Escondido, Oaxaca"
             )
             
-            session.add_all([campus_huatulco, campus_puerto_angel, campus_zipolite])
+            session.add_all([campus_huatulco, campus_puerto_angel, campus_puerto_escondido])
             await session.flush()
             
             # ────────────────────────────────────────────────────────────
             # 2. CREAR CATEGORÍAS DE RESIDUO
             # ────────────────────────────────────────────────────────────
             print("♻️  Creando categorías de residuo...")
-            
+    
+            # Fase Inicial: 3 categorías
             categories = [
-                WasteCategory(name="Orgánico", description="Residuos orgánicos", color="#8B4513"),
-                WasteCategory(name="Papel y Cartón", description="Papel y cartón", color="#FFD700"),
-                WasteCategory(name="Plástico", description="Plástico PET y otros", color="#4169E1"),
-                WasteCategory(name="Vidrio", description="Vidrio", color="#00FF00"),
-                WasteCategory(name="Metal", description="Metal y aluminio", color="#C0C0C0"),
-                WasteCategory(name="Inorgánico", description="Residuos inorgánicos", color="#808080"),
+                WasteCategory(
+                    name="Orgánicos",
+                    description="Residuos orgánicos biodegradables",
+                    color="#8B4513"
+                ),
+                WasteCategory(
+                    name="Inorgánicos húmedos",
+                    description="Residuos inorgánicos con humedad",
+                    color="#4169E1"
+                ),
+                WasteCategory(
+                    name="Inorgánicos secos",
+                    description="Residuos inorgánicos secos",
+                    color="#808080"
+                ),
             ]
-            
             session.add_all(categories)
             await session.flush()
             
@@ -70,14 +79,13 @@ async def seed():
             # 3. CREAR UBICACIONES
             # ────────────────────────────────────────────────────────────
             print("📌 Creando ubicaciones...")
-            
             locations = [
                 Location(name="Plaza Central", sector="Centro", location_type="plaza", campus_id=campus_huatulco.id),
                 Location(name="Instituto de Biología", sector="Académico", location_type="building", campus_id=campus_huatulco.id),
                 Location(name="Cafetería Principal", sector="Servicios", location_type="cafeteria", campus_id=campus_puerto_angel.id),
                 Location(name="Biblioteca", sector="Académico", location_type="building", campus_id=campus_puerto_angel.id),
-                Location(name="Jardín Botánico", sector="Investigación", location_type="garden", campus_id=campus_zipolite.id),
-                Location(name="Estacionamiento", sector="Servicios", location_type="parking", campus_id=campus_zipolite.id),
+                Location(name="Jardín Botánico", sector="Investigación", location_type="garden", campus_id=campus_puerto_escondido.id),
+                Location(name="Estacionamiento", sector="Servicios", location_type="parking", campus_id=campus_puerto_escondido.id),
                 Location(name="Laboratorio Marino", sector="Investigación", location_type="lab", campus_id=campus_huatulco.id),
             ]
             
@@ -143,7 +151,6 @@ async def seed():
             # 5. CREAR CONTENEDORES
             # ────────────────────────────────────────────────────────────
             print("🗑️  Creando contenedores...")
-            
             containers = [
                 Container(
                     container_code="CONT-HUA-001",
@@ -151,7 +158,7 @@ async def seed():
                     volume_liters=120,
                     status="active",
                     location_id=locations[0].id,
-                    waste_category_id=categories[0].id,
+                    waste_category_id=categories[0].id,  # Orgánicos
                 ),
                 Container(
                     container_code="CONT-HUA-002",
@@ -159,7 +166,7 @@ async def seed():
                     volume_liters=120,
                     status="active",
                     location_id=locations[1].id,
-                    waste_category_id=categories[1].id,
+                    waste_category_id=categories[1].id,  # Inorgánicos húmedos
                 ),
                 Container(
                     container_code="CONT-PA-001",
@@ -167,7 +174,7 @@ async def seed():
                     volume_liters=120,
                     status="active",
                     location_id=locations[2].id,
-                    waste_category_id=categories[2].id,
+                    waste_category_id=categories[2].id,  # Inorgánicos secos
                 ),
                 Container(
                     container_code="CONT-PA-002",
@@ -175,23 +182,23 @@ async def seed():
                     volume_liters=120,
                     status="active",
                     location_id=locations[3].id,
-                    waste_category_id=categories[3].id,
+                    waste_category_id=categories[0].id,  # Orgánicos
                 ),
                 Container(
-                    container_code="CONT-ZIP-001",
+                    container_code="CONT-PE-001",
                     tare_weight=5.0,
                     volume_liters=120,
                     status="active",
                     location_id=locations[4].id,
-                    waste_category_id=categories[4].id,
+                    waste_category_id=categories[1].id,  # Inorgánicos húmedos
                 ),
                 Container(
-                    container_code="CONT-ZIP-002",
+                    container_code="CONT-PE-002",
                     tare_weight=5.0,
                     volume_liters=120,
                     status="active",
                     location_id=locations[5].id,
-                    waste_category_id=categories[5].id,
+                    waste_category_id=categories[2].id,  # Inorgánicos secos
                 ),
             ]
             
@@ -202,13 +209,13 @@ async def seed():
             # 6. CREAR REPORTES DE RECOLECCIÓN
             # ────────────────────────────────────────────────────────────
             print("📝 Creando reportes de recolección...")
-            
             records = [
                 CollectionRecord(
                     gross_weight=45.5,
                     net_weight=40.5,
-                    fill_level="85",
-                    condition="good",
+                    fill_level="4",
+                    physical_state="buen_estado",
+                    condition="tapado",
                     separation_level="2",
                     container_id=containers[0].id,
                     collector_id=collectors[0].id,
@@ -216,8 +223,9 @@ async def seed():
                 CollectionRecord(
                     gross_weight=38.2,
                     net_weight=33.2,
-                    fill_level="75",
-                    condition="fair",
+                    fill_level="3",
+                    physical_state="buen_estado",
+                    condition="destapado,huele_mal",
                     separation_level="1",
                     container_id=containers[1].id,
                     collector_id=collectors[0].id,
@@ -225,8 +233,9 @@ async def seed():
                 CollectionRecord(
                     gross_weight=52.0,
                     net_weight=47.0,
-                    fill_level="95",
-                    condition="good",
+                    fill_level="5",
+                    physical_state="tapa_rota",
+                    condition="desbordado,fauna",
                     separation_level="3",
                     container_id=containers[2].id,
                     collector_id=collectors[1].id,
@@ -234,8 +243,9 @@ async def seed():
                 CollectionRecord(
                     gross_weight=28.5,
                     net_weight=23.5,
-                    fill_level="60",
-                    condition="good",
+                    fill_level="2",
+                    physical_state="buen_estado",
+                    condition="tapado",
                     separation_level="2",
                     container_id=containers[3].id,
                     collector_id=collectors[1].id,
@@ -282,7 +292,7 @@ async def seed():
             # ────────────────────────────────────────────────────────────
             await session.commit()
             print("✅ Seed completado correctamente!")
-            print(f"   - {len([campus_huatulco, campus_puerto_angel, campus_zipolite])} campus")
+            print(f"   - {len([campus_huatulco, campus_puerto_angel, campus_puerto_escondido])} campus")
             print(f"   - {len(categories)} categorías")
             print(f"   - {len(locations)} ubicaciones")
             print(f"   - {len([admin] + collectors)} usuarios")

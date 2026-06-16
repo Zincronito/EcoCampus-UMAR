@@ -10,13 +10,16 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/netinfo": "11.4.1",
+    "@react-native-picker/picker": "^2.11.4",
     "@tanstack/react-query": "^5.101.0",
     "axios": "^1.17.0",
     "expo": "~54.0.34",
     "expo-sqlite": "~16.0.10",
     "expo-status-bar": "~3.0.9",
     "react": "19.1.0",
-    "react-native": "0.81.5"
+    "react-native": "0.81.5",
+    "react-native-svg": "15.12.1"
   },
   "private": true,
   "devDependencies": {
