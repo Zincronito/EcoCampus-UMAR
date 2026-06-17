@@ -21,7 +21,7 @@ interface Container {
   location_id: string;
 }
 
-export default function CollectionScreen({ onLogout }: any) {
+export default function CollectionScreen({ onLogout, onSwitchToHistory }: any) {
   const [containers, setContainers] = useState<Container[]>([]);
   const [selectedContainer, setSelectedContainer] = useState<Container | null>(null);
   const [loading, setLoading] = useState(true);
@@ -298,7 +298,7 @@ export default function CollectionScreen({ onLogout }: any) {
             <Text style={styles.tabIconActive}>{"\u2630"}</Text>
             <Text style={styles.tabTextActive}>ESCANEAR</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.tabItem}>
+          <TouchableOpacity style={styles.tabItem} onPress={onSwitchToHistory}>
             <Text style={styles.tabIcon}>{"\u27F2"}</Text>
             <Text style={styles.tabText}>HISTORIAL</Text>
           </TouchableOpacity>
@@ -615,7 +615,7 @@ export default function CollectionScreen({ onLogout }: any) {
           <Text style={styles.tabIconActive}>{"\u2630"}</Text>
           <Text style={styles.tabTextActive}>ESCANEAR</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem}>
+        <TouchableOpacity style={styles.tabItem} onPress={onSwitchToHistory}>
           <Text style={styles.tabIcon}>{"\u27F2"}</Text>
           <Text style={styles.tabText}>HISTORIAL</Text>
         </TouchableOpacity>

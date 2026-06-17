@@ -136,18 +136,14 @@ async def get_collection_records(db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error al obtener reportes: {str(e)}")
 
 
-@router.get("/collector/{collector_id}", response_model=list[CollectionRecordResponse])
+@router.get("/collector/{collector_id}")
 async def get_collector_records(
     collector_id: uuid.UUID,
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Obtiene todos los reportes de un recolector específico.
-    
-    Args:
-        collector_id: UUID del recolector
-    
-    Retorna: lista de reportes del recolector
+    Obtiene todos los reportes de un recolector con info del contenedor y categoria.
+    Incluye tambien la incidencia asociada (si existe).
     """
     try:
         # Validar que el recolector existe
@@ -158,14 +154,63 @@ async def get_collector_records(
         if not collector:
             raise HTTPException(status_code=404, detail="Recolector no encontrado")
         
-        # Obtener reportes del recolector
+        # Obtener reportes con sus relaciones cargadas
+        from sqlalchemy.orm import selectinload
+        from app.models.container import Container
+        from app.models.location import Location
+        
         result = await db.execute(
             select(CollectionRecord)
             .where(CollectionRecord.collector_id == collector_id)
+            .options(
+                selectinload(CollectionRecord.container)
+                .selectinload(Container.waste_category),
+                selectinload(CollectionRecord.container)
+                .selectinload(Container.location)
+                .selectinload(Location.campus),
+                selectinload(CollectionRecord.incident),
+            )
             .order_by(CollectionRecord.created_at.desc())
         )
         records = result.scalars().all()
-        return records
+        
+        # Armar la respuesta con info enriquecida
+        response = []
+        for record in records:
+            response.append({
+                "id": str(record.id),
+                "gross_weight": record.gross_weight,
+                "net_weight": record.net_weight,
+                "fill_level": record.fill_level,
+                "physical_state": record.physical_state,
+                "condition": record.condition,
+                "separation_level": record.separation_level,
+                "created_at": record.created_at.isoformat() if record.created_at else None,
+                "container": {
+                    "id": str(record.container.id),
+                    "container_code": record.container.container_code,
+                    "volume_liters": record.container.volume_liters,
+                    "tare_weight": record.container.tare_weight,
+                } if record.container else None,
+                "category": {
+                    "id": str(record.container.waste_category.id),
+                    "name": record.container.waste_category.name,
+                    "color": record.container.waste_category.color,
+                } if record.container and record.container.waste_category else None,
+                "location": {
+                    "name": record.container.location.name,
+                    "sector": record.container.location.sector,
+                    "campus": record.container.location.campus.name if record.container.location.campus else None,
+                } if record.container and record.container.location else None,
+                "incident": {
+                    "id": str(record.incident.id),
+                    "description": record.incident.description,
+                    "quick_tag": record.incident.quick_tag,
+                    "status": record.incident.status,
+                } if record.incident else None
+            })
+        
+        return response
         
     except HTTPException:
         raise

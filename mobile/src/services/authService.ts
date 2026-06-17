@@ -7,7 +7,7 @@ import { API_URL } from "../config";
 export const authService = {
   login: async (employeeId: string, pin: string) => {
     try {
-      console.log("🔐 Intentando login con fetch a:", `${API_URL}/auth/login`);
+      console.log("Intentando login con fetch a:", `${API_URL}/auth/login`);
 
       const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
@@ -20,9 +20,9 @@ export const authService = {
         }),
       });
 
-      console.log("📝 Status:", response.status);
+      console.log("Status:", response.status);
       const data = await response.json();
-      console.log("✅ Response:", data);
+      console.log("Response:", data);
 
       if (!response.ok) {
         throw new Error(data.detail || "Error de autenticación");
@@ -42,7 +42,7 @@ export const authService = {
 
       return data;
     } catch (error: any) {
-      console.error("❌ Error de login:", error.message);
+      console.error("Error de login:", error.message);
       throw error;
     }
   },
@@ -70,7 +70,7 @@ export const authService = {
 export const containerService = {
   getAll: async () => {
     try {
-      console.log("📦 Obteniendo contenedores...");
+      console.log("Obteniendo contenedores...");
 
       const response = await fetch(`${API_URL}/containers`, {
         method: "GET",
@@ -84,10 +84,10 @@ export const containerService = {
       }
 
       const data = await response.json();
-      console.log("✅ Contenedores:", data);
+      console.log("Contenedores:", data);
       return data;
     } catch (error: any) {
-      console.error("❌ Error al obtener contenedores:", error.message);
+      console.error("Error al obtener contenedores:", error.message);
       throw error;
     }
   },
@@ -107,7 +107,7 @@ export const containerService = {
 
       return await response.json();
     } catch (error: any) {
-      console.error("❌ Error al obtener contenedor:", error.message);
+      console.error("Error al obtener contenedor:", error.message);
       throw error;
     }
   },
@@ -130,7 +130,7 @@ export const recordService = {
     device_recorded_at?: string;
   }) => {
     try {
-      console.log("📝 Creando reporte de recolección...", recordData);
+      console.log("Creando reporte de recolección...", recordData);
 
       const response = await fetch(`${API_URL}/records`, {
         method: "POST",
@@ -146,17 +146,17 @@ export const recordService = {
       }
 
       const data = await response.json();
-      console.log("✅ Reporte creado:", data);
+      console.log("eporte creado:", data);
       return data;
     } catch (error: any) {
-      console.error("❌ Error al crear reporte:", error.message);
+      console.error("Error al crear reporte:", error.message);
       throw error;
     }
   },
 
   getAll: async () => {
     try {
-      console.log("📋 Obteniendo reportes...");
+      console.log("Obteniendo reportes...");
 
       const response = await fetch(`${API_URL}/records`, {
         method: "GET",
@@ -170,17 +170,17 @@ export const recordService = {
       }
 
       const data = await response.json();
-      console.log("✅ Reportes:", data);
+      console.log("Reportes:", data);
       return data;
     } catch (error: any) {
-      console.error("❌ Error al obtener reportes:", error.message);
+      console.error("Error al obtener reportes:", error.message);
       throw error;
     }
   },
 
   getByCollector: async (collectorId: string) => {
     try {
-      console.log("📋 Obteniendo reportes del recolector...");
+      console.log("Obteniendo reportes del recolector...");
 
       const response = await fetch(`${API_URL}/records/collector/${collectorId}`, {
         method: "GET",
@@ -194,10 +194,10 @@ export const recordService = {
       }
 
       const data = await response.json();
-      console.log("✅ Reportes del recolector:", data);
+      console.log("Reportes del recolector:", data);
       return data;
     } catch (error: any) {
-      console.error("❌ Error:", error.message);
+      console.error("Error:", error.message);
       throw error;
     }
   },
@@ -217,7 +217,7 @@ export const incidentService = {
     collection_record_id?: string;
   }) => {
     try {
-      console.log("⚠️  Reportando incidente...", incidentData);
+      console.log("Reportando incidente...", incidentData);
 
       const response = await fetch(`${API_URL}/incidents`, {
         method: "POST",
@@ -233,17 +233,17 @@ export const incidentService = {
       }
 
       const data = await response.json();
-      console.log("✅ Incidente reportado:", data);
+      console.log("Incidente reportado:", data);
       return data;
     } catch (error: any) {
-      console.error("❌ Error al reportar incidente:", error.message);
+      console.error("Error al reportar incidente:", error.message);
       throw error;
     }
   },
 
   getAll: async () => {
     try {
-      console.log("⚠️  Obteniendo incidentes...");
+      console.log("Obteniendo incidentes...");
 
       const response = await fetch(`${API_URL}/incidents`, {
         method: "GET",
@@ -257,10 +257,10 @@ export const incidentService = {
       }
 
       const data = await response.json();
-      console.log("✅ Incidentes:", data);
+      console.log("Incidentes:", data);
       return data;
     } catch (error: any) {
-      console.error("❌ Error al obtener incidentes:", error.message);
+      console.error("Error al obtener incidentes:", error.message);
       throw error;
     }
   },
@@ -280,7 +280,7 @@ export const incidentService = {
 
       return await response.json();
     } catch (error: any) {
-      console.error("❌ Error:", error.message);
+      console.error("Error:", error.message);
       throw error;
     }
   },
@@ -301,7 +301,7 @@ export const incidentService = {
 
       return await response.json();
     } catch (error: any) {
-      console.error("❌ Error:", error.message);
+      console.error("Error:", error.message);
       throw error;
     }
   },
