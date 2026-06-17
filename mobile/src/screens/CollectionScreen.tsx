@@ -11,6 +11,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { containerService, recordService } from "../services/authService";
+import IncidentReportModal from "./IncidentReportModal";
 
 interface Container {
   id: string;
@@ -34,6 +35,9 @@ export default function CollectionScreen({ onLogout }: any) {
   const [physicalStates, setPhysicalStates] = useState<string[]>([]);
   const [conditions, setConditions] = useState<string[]>([]);
   const [separationLevel, setSeparationLevel] = useState<string>("");
+
+  // Modal de incidencias
+  const [incidentModalVisible, setIncidentModalVisible] = useState(false);
 
   useEffect(() => {
     loadContainers();
@@ -74,7 +78,24 @@ export default function CollectionScreen({ onLogout }: any) {
     if (weight > 0) setWeight(weight - 1);
   };
 
-  // Logica para condiciones (multi-select con exclusion tapado/destapado)
+  const togglePhysicalState = (value: string) => {
+    setPhysicalStates((prev) => {
+      if (prev.includes(value)) {
+        return prev.filter((s) => s !== value);
+      }
+
+      if (value === "buen_estado") {
+        return ["buen_estado"];
+      }
+
+      if (value === "tapa_rota" || value === "contenedor_roto") {
+        return [...prev.filter((s) => s !== "buen_estado"), value];
+      }
+
+      return [...prev, value];
+    });
+  };
+
   const toggleCondition = (value: string) => {
     setConditions((prev) => {
       if (prev.includes(value)) {
@@ -92,26 +113,58 @@ export default function CollectionScreen({ onLogout }: any) {
     });
   };
 
-  // Logica para estado fisico (multi-select con exclusion buen_estado)
-  const togglePhysicalState = (value: string) => {
-    setPhysicalStates((prev) => {
-      // Si ya esta seleccionado, lo quitamos
-      if (prev.includes(value)) {
-        return prev.filter((s) => s !== value);
-      }
+  // Validar si el formulario está completo (para feedback visual)
+  const isFormComplete =
+    weight > 0 &&
+    fillLevel !== "" &&
+    physicalStates.length > 0 &&
+    conditions.length > 0 &&
+    separationLevel !== "";
 
-      // Si selecciona "buen_estado", quita los demas
-      if (value === "buen_estado") {
-        return ["buen_estado"];
-      }
+  const handleOpenIncident = () => {
+    // Validar que el formulario esté completo antes de permitir reportar incidencia
+    if (weight === 0) {
+      Alert.alert(
+        "Formulario incompleto",
+        "Antes de reportar una incidencia, completa el peso del contenedor"
+      );
+      return;
+    }
 
-      // Si selecciona tapa_rota o contenedor_roto, quita buen_estado
-      if (value === "tapa_rota" || value === "contenedor_roto") {
-        return [...prev.filter((s) => s !== "buen_estado"), value];
-      }
+    if (!fillLevel) {
+      Alert.alert(
+        "Formulario incompleto",
+        "Antes de reportar una incidencia, selecciona el nivel de llenado"
+      );
+      return;
+    }
 
-      return [...prev, value];
-    });
+    if (physicalStates.length === 0) {
+      Alert.alert(
+        "Formulario incompleto",
+        "Antes de reportar una incidencia, selecciona el estado físico"
+      );
+      return;
+    }
+
+    if (conditions.length === 0) {
+      Alert.alert(
+        "Formulario incompleto",
+        "Antes de reportar una incidencia, selecciona al menos una condición"
+      );
+      return;
+    }
+
+    if (!separationLevel) {
+      Alert.alert(
+        "Formulario incompleto",
+        "Antes de reportar una incidencia, selecciona el nivel de separación"
+      );
+      return;
+    }
+
+    // Si todo está completo, abrir el modal
+    setIncidentModalVisible(true);
   };
 
   const handleSubmit = async () => {
@@ -181,6 +234,16 @@ export default function CollectionScreen({ onLogout }: any) {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleIncidentSuccess = () => {
+    // Después de reportar incidencia, volver a lista de contenedores
+    setSelectedContainer(null);
+    setWeight(0);
+    setFillLevel("");
+    setPhysicalStates([]);
+    setConditions([]);
+    setSeparationLevel("");
   };
 
   if (loading) {
@@ -521,7 +584,13 @@ export default function CollectionScreen({ onLogout }: any) {
         </View>
 
         {/* BOTON REPORTAR INCIDENCIA */}
-        <TouchableOpacity style={styles.incidentBtn}>
+        <TouchableOpacity
+          style={[
+            styles.incidentBtn,
+            !isFormComplete && { opacity: 0.5 }
+          ]}
+          onPress={handleOpenIncident}
+        >
           <Text style={styles.incidentText}>{"\u26A0"} REPORTAR INCIDENCIA</Text>
         </TouchableOpacity>
 
@@ -551,6 +620,25 @@ export default function CollectionScreen({ onLogout }: any) {
           <Text style={styles.tabText}>HISTORIAL</Text>
         </TouchableOpacity>
       </View>
+
+      {/* MODAL DE INCIDENCIAS */}
+      {selectedContainer && user && (
+        <IncidentReportModal
+          visible={incidentModalVisible}
+          containerId={selectedContainer.id}
+          collectorId={user.id}
+          formData={{
+            gross_weight: weight,
+            net_weight: weight - selectedContainer.tare_weight,
+            fill_level: fillLevel,
+            physical_state: physicalStates.join(","),
+            condition: conditions,  // ← SIN hacer join(), solo el array
+            separation_level: separationLevel,
+          }}
+          onClose={() => setIncidentModalVisible(false)}
+          onSuccess={handleIncidentSuccess}
+        />
+      )}
     </View>
   );
 }
