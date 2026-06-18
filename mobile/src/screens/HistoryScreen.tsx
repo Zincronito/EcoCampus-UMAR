@@ -140,7 +140,7 @@ export default function HistoryScreen({ onSwitchToScan, onLogout }: any) {
       <View style={styles.header}>
         <TouchableOpacity onPress={onLogout} style={styles.headerLeft}>
           <Text style={styles.backArrow}>{"\u2190"}</Text>
-          <Text style={styles.headerTitle}>Gestion de res..</Text>
+          <Text style={styles.headerTitle}>EcoCampus</Text>
         </TouchableOpacity>
         <View style={styles.statusBadge}>
           <View
@@ -156,7 +156,7 @@ export default function HistoryScreen({ onSwitchToScan, onLogout }: any) {
       </View>
 
       <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.mainTitle}>HISTORIAL DE RESIDUOS</Text>
+        <Text style={styles.mainTitle}>Historial de Residuos</Text>
 
         {/* Buscador */}
         <Text style={styles.searchLabel}>BUSCAR REGISTRO</Text>

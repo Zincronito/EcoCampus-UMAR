@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -9,7 +9,14 @@ import {
   Alert,
   ActivityIndicator,
   TextInput,
+  Image,
+  Animated,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from "expo-speech-recognition";
 import { incidentService, recordService } from "../services/authService";
 
 interface IncidentReportModalProps {
@@ -38,6 +45,11 @@ export default function IncidentReportModal({
 }: IncidentReportModalProps) {
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [isListening, setIsListening] = useState(false);
+
+  // Animacion del microfono
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const quickTags = [
     { id: "escombros", label: "Escombros mezclados", color: "#fff" },
@@ -46,19 +58,124 @@ export default function IncidentReportModal({
     { id: "vidrio", label: "Vidrio roto", color: "#fecaca" },
   ];
 
-  const handleVoicePress = () => {
-    Alert.alert(
-      "Función no disponible en Expo Go",
-      "El reconocimiento de voz requiere un build de producción. Por ahora, escribe la descripción a mano o usa una sugerencia rápida.",
-      [{ text: "Entendido" }]
-    );
+  // Eventos del reconocimiento de voz
+  useSpeechRecognitionEvent("start", () => {
+    setIsListening(true);
+    startPulseAnimation();
+  });
+
+  useSpeechRecognitionEvent("end", () => {
+    setIsListening(false);
+    stopPulseAnimation();
+  });
+
+  useSpeechRecognitionEvent("result", (event) => {
+    const text = event.results[0]?.transcript;
+    if (text) {
+      setDescription(text);
+    }
+  });
+
+  useSpeechRecognitionEvent("error", (event) => {
+    console.log("Error de voz:", event.error, event.message);
+    setIsListening(false);
+    stopPulseAnimation();
+    Alert.alert("Error", "No se pudo procesar la voz: " + event.message);
+  });
+
+  const startPulseAnimation = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.2,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
   };
 
-  const handlePhotoPress = () => {
+  const stopPulseAnimation = () => {
+    pulseAnim.stopAnimation();
+    pulseAnim.setValue(1);
+  };
+
+  const handleVoicePress = async () => {
+    if (isListening) {
+      // Si esta escuchando, detener
+      ExpoSpeechRecognitionModule.stop();
+      return;
+    }
+
+    try {
+      // Pedir permisos
+      const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      if (!result.granted) {
+        Alert.alert(
+          "Permiso denegado",
+          "Necesitamos acceso al micrófono para usar voz a texto"
+        );
+        return;
+      }
+
+      // Iniciar reconocimiento
+      ExpoSpeechRecognitionModule.start({
+        lang: "es-MX",
+        interimResults: false,
+        continuous: false,
+        requiresOnDeviceRecognition: false,
+        addsPunctuation: true,
+      });
+    } catch (error: any) {
+      console.error("Error al iniciar voz:", error);
+      Alert.alert("Error", "No se pudo acceder al micrófono");
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (!permissionResult.granted) {
+        Alert.alert(
+          "Permiso denegado",
+          "Necesitamos acceso a la cámara para tomar fotos de evidencia."
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.7,
+        allowsEditing: false,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        setPhotoUri(result.assets[0].uri);
+      }
+    } catch (error: any) {
+      console.error("Error al tomar foto:", error);
+      Alert.alert("Error", "No se pudo abrir la cámara");
+    }
+  };
+
+  const handleRemovePhoto = () => {
     Alert.alert(
-      "Próximamente",
-      "La captura de fotos estará disponible en la siguiente versión.",
-      [{ text: "Entendido" }]
+      "Eliminar foto",
+      "¿Estás seguro que quieres eliminar la foto?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: () => setPhotoUri(null),
+        },
+      ]
     );
   };
 
@@ -91,7 +208,7 @@ export default function IncidentReportModal({
       const incidentPayload = {
         description: description.trim(),
         quick_tag: description,
-        photo_url: null,
+        photo_url: photoUri || null,
         container_id: containerId,
         reported_by_id: collectorId,
         collection_record_id: savedRecord.id,
@@ -101,6 +218,7 @@ export default function IncidentReportModal({
 
       Alert.alert("Éxito", "Incidencia y reporte guardados correctamente");
       setDescription("");
+      setPhotoUri(null);
       onSuccess();
       onClose();
     } catch (error: any) {
@@ -123,21 +241,49 @@ export default function IncidentReportModal({
         </View>
 
         <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <Text style={styles.mainTitle}>Rellene los capos</Text>
+          <Text style={styles.mainTitle}>Rellene los campos</Text>
 
           {/* EVIDENCIA Y REPORTE */}
           <Text style={styles.sectionTitle}>Evidencia y Reporte</Text>
           <View style={styles.evidenceRow}>
-            <TouchableOpacity style={styles.photoBox} onPress={handlePhotoPress}>
-              <Text style={styles.evidenceIcon}>{"\uD83D\uDCF7"}</Text>
-              <Text style={styles.evidenceLabel}>FOTO</Text>
+            <TouchableOpacity
+              style={[styles.photoBox, photoUri && styles.photoBoxWithImage]}
+              onPress={handleTakePhoto}
+            >
+              {photoUri ? (
+                <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+              ) : (
+                <>
+                  <Text style={styles.evidenceIcon}>{"\uD83D\uDCF7"}</Text>
+                  <Text style={styles.evidenceLabel}>FOTO</Text>
+                </>
+              )}
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.voiceBox} onPress={handleVoicePress}>
-              <Text style={styles.evidenceIcon}>{"\uD83C\uDFA4"}</Text>
-              <Text style={[styles.evidenceLabel, { color: "#fff" }]}>VOZ</Text>
+            <TouchableOpacity
+              style={[styles.voiceBox, isListening && styles.voiceBoxActive]}
+              onPress={handleVoicePress}
+            >
+              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                <Text style={styles.evidenceIcon}>{"\uD83C\uDFA4"}</Text>
+              </Animated.View>
+              <Text style={[styles.evidenceLabel, { color: "#fff" }]}>
+                {isListening ? "ESCUCHANDO..." : "VOZ"}
+              </Text>
             </TouchableOpacity>
           </View>
+
+          {/* Boton eliminar foto */}
+          {photoUri && (
+            <TouchableOpacity
+              style={styles.removePhotoBtn}
+              onPress={handleRemovePhoto}
+            >
+              <Text style={styles.removePhotoText}>
+                {"\u2715"} Eliminar foto
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* DESCRIPCION DETALLADA */}
           <Text style={styles.sectionTitle}>Descripción Detallada</Text>
@@ -272,6 +418,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     minHeight: 120,
+    overflow: "hidden",
+  },
+  photoBoxWithImage: {
+    padding: 0,
+  },
+  photoPreview: {
+    width: "100%",
+    height: 120,
+    resizeMode: "cover",
   },
   voiceBox: {
     flex: 1,
@@ -284,6 +439,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minHeight: 120,
   },
+  voiceBoxActive: {
+    backgroundColor: "#991b1b",
+  },
   evidenceIcon: {
     fontSize: 38,
     marginBottom: 6,
@@ -293,6 +451,20 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#000",
     letterSpacing: 0.5,
+  },
+  removePhotoBtn: {
+    backgroundColor: "#fef2f2",
+    borderWidth: 1,
+    borderColor: "#dc2626",
+    borderRadius: 4,
+    padding: 8,
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  removePhotoText: {
+    color: "#dc2626",
+    fontSize: 12,
+    fontWeight: "bold",
   },
   textInput: {
     backgroundColor: "#fff",

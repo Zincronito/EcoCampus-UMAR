@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "EcoCampus UMAR",
+    "slug": "ecocampus-umar",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,20 +13,58 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "EcoCampus necesita acceso a la cámara para capturar evidencia fotográfica de incidencias y escanear códigos QR de contenedores.",
+        "NSMicrophoneUsageDescription": "EcoCampus necesita el micrófono para convertir tu voz a texto.",
+        "NSSpeechRecognitionUsageDescription": "EcoCampus usa el reconocimiento de voz para describir incidencias."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.umar.ecocampus",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-sqlite"
-    ]
+      "expo-sqlite",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "EcoCampus necesita acceso a la cámara para capturar evidencia fotográfica de incidencias y escanear códigos QR."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "EcoCampus necesita acceso a la cámara para tomar fotos de evidencia.",
+          "photosPermission": "EcoCampus necesita acceso a tus fotos para seleccionar evidencia de incidencias."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "EcoCampus necesita el micrófono para convertir tu voz a texto.",
+          "speechRecognitionPermission": "EcoCampus usa el reconocimiento de voz para describir incidencias.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "171dcfd1-dc28-49b9-bc9b-4ac8725f0198"
+      }
+    }
   }
 }
