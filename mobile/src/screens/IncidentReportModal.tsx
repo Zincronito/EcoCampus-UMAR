@@ -17,12 +17,13 @@ import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from "expo-speech-recognition";
-import { incidentService, recordService } from "../services/authService";
+import { incidentService, recordService, containerService } from "../services/authService";
 
 interface IncidentReportModalProps {
   visible: boolean;
   containerId: string;
   collectorId: string;
+  containerCode: string;
   formData: {
     gross_weight: number;
     net_weight: number;
@@ -33,15 +34,18 @@ interface IncidentReportModalProps {
   };
   onClose: () => void;
   onSuccess: () => void;
+  onSubmitSuccess: (data: any) => void;
 }
 
 export default function IncidentReportModal({
   visible,
   containerId,
   collectorId,
+  containerCode,
   formData,
   onClose,
   onSuccess,
+  onSubmitSuccess,
 }: IncidentReportModalProps) {
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -203,6 +207,10 @@ export default function IncidentReportModal({
         collector_id: collectorId,
       };
 
+      // Obtener info del contenedor para la pantalla de exito
+      const containerData = await containerService.getById(containerId);
+      const categoryName = containerData?.waste_category?.name || "Sin categoria";
+
       const savedRecord = await recordService.create(recordPayload as any);
 
       const incidentPayload = {
@@ -216,11 +224,19 @@ export default function IncidentReportModal({
 
       await incidentService.create(incidentPayload as any);
 
-      Alert.alert("Éxito", "Incidencia y reporte guardados correctamente");
+      // Limpiar estado
       setDescription("");
       setPhotoUri(null);
-      onSuccess();
       onClose();
+
+      // Navegar a pantalla de exito
+      onSubmitSuccess({
+        container_code: containerCode,
+        category_name: categoryName,
+        weight: formData.net_weight,
+        has_incident: true,
+        timestamp: new Date().toISOString(),
+      });
     } catch (error: any) {
       Alert.alert("Error", error.message || "Error al guardar");
     } finally {

@@ -21,7 +21,7 @@ interface Container {
   location_id: string;
 }
 
-export default function CollectionScreen({ onLogout, onSwitchToHistory }: any) {
+export default function CollectionScreen({ onLogout, onSwitchToHistory, onSubmitSuccess }: any) {
   const [containers, setContainers] = useState<Container[]>([]);
   const [selectedContainer, setSelectedContainer] = useState<Container | null>(null);
   const [loading, setLoading] = useState(true);
@@ -214,21 +214,29 @@ export default function CollectionScreen({ onLogout, onSwitchToHistory }: any) {
         collector_id: user.id,
       };
 
+      // Obtener categoria del contenedor para mostrar en pantalla de exito
+      const containerData = await containerService.getById(selectedContainer.id);
+      const categoryName = containerData?.waste_category?.name || "Sin categoria";
+
       await recordService.create(payload);
 
-      Alert.alert("Exito", "Reporte enviado correctamente", [
-        {
-          text: "OK",
-          onPress: () => {
-            setSelectedContainer(null);
-            setWeight(0);
-            setFillLevel("");
-            setPhysicalStates([]);
-            setConditions([]);
-            setSeparationLevel("");
-          },
-        },
-      ]);
+      // Limpiar formulario
+      const containerCode = selectedContainer.container_code;
+      setSelectedContainer(null);
+      setWeight(0);
+      setFillLevel("");
+      setPhysicalStates([]);
+      setConditions([]);
+      setSeparationLevel("");
+
+      // Navegar a pantalla de exito
+      onSubmitSuccess({
+        container_code: containerCode,
+        category_name: categoryName,
+        weight: netWeight,
+        has_incident: false,
+        timestamp: new Date().toISOString(),
+      });
     } catch (error: any) {
       Alert.alert("Error", error.message || "Error al enviar reporte");
     } finally {
@@ -622,23 +630,25 @@ export default function CollectionScreen({ onLogout, onSwitchToHistory }: any) {
       </View>
 
       {/* MODAL DE INCIDENCIAS */}
-      {selectedContainer && user && (
-        <IncidentReportModal
-          visible={incidentModalVisible}
-          containerId={selectedContainer.id}
-          collectorId={user.id}
-          formData={{
-            gross_weight: weight,
-            net_weight: weight - selectedContainer.tare_weight,
-            fill_level: fillLevel,
-            physical_state: physicalStates.join(","),
-            condition: conditions,  // ← SIN hacer join(), solo el array
-            separation_level: separationLevel,
-          }}
-          onClose={() => setIncidentModalVisible(false)}
-          onSuccess={handleIncidentSuccess}
-        />
-      )}
+{selectedContainer && user && (
+  <IncidentReportModal
+    visible={incidentModalVisible}
+    containerId={selectedContainer.id}
+    collectorId={user.id}
+    containerCode={selectedContainer.container_code}
+    formData={{
+      gross_weight: weight,
+      net_weight: weight - selectedContainer.tare_weight,
+      fill_level: fillLevel,
+      physical_state: physicalStates.join(","),
+      condition: conditions,
+      separation_level: separationLevel,
+    }}
+    onClose={() => setIncidentModalVisible(false)}
+    onSuccess={handleIncidentSuccess}
+    onSubmitSuccess={onSubmitSuccess}
+  />
+)}
     </View>
   );
 }
