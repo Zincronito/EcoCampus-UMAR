@@ -111,6 +111,35 @@ export const containerService = {
       throw error;
     }
   },
+  getByCode: async (containerCode: string) => {
+  try {
+    console.log("📦 Buscando contenedor por codigo:", containerCode);
+
+    const response = await fetch(
+      `${API_URL}/containers/code/${containerCode}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error(`Contenedor "${containerCode}" no encontrado`);
+      }
+      throw new Error("Error al buscar contenedor");
+    }
+
+    const data = await response.json();
+    console.log("Contenedor encontrado:", data);
+    return data;
+  } catch (error: any) {
+    console.error("Error al buscar contenedor:", error.message);
+    throw error;
+  }
+},
 };
 
 // ────────────────────────────────────────────────────────────

@@ -21,10 +21,17 @@ interface Container {
   location_id: string;
 }
 
-export default function CollectionScreen({ onLogout, onSwitchToHistory, onSubmitSuccess }: any) {
-  const [containers, setContainers] = useState<Container[]>([]);
-  const [selectedContainer, setSelectedContainer] = useState<Container | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function CollectionScreen({
+  onLogout,
+  onSwitchToHistory,
+  onSubmitSuccess,
+  preselectedContainer,
+  onBackToScanner,
+}: any) {
+  const [selectedContainer, setSelectedContainer] = useState<Container | null>(
+    preselectedContainer || null
+  );
+  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(true);
@@ -40,7 +47,6 @@ export default function CollectionScreen({ onLogout, onSwitchToHistory, onSubmit
   const [incidentModalVisible, setIncidentModalVisible] = useState(false);
 
   useEffect(() => {
-    loadContainers();
     loadUser();
 
     const unsubscribe = NetInfo.addEventListener((state) => {
@@ -61,17 +67,6 @@ export default function CollectionScreen({ onLogout, onSwitchToHistory, onSubmit
     }
   };
 
-  const loadContainers = async () => {
-    try {
-      setLoading(true);
-      const data = await containerService.getAll();
-      setContainers(data);
-    } catch (error: any) {
-      Alert.alert("Error", "No se pudieron cargar los contenedores");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const incrementWeight = () => setWeight(weight + 1);
   const decrementWeight = () => {
@@ -263,63 +258,11 @@ export default function CollectionScreen({ onLogout, onSwitchToHistory, onSubmit
     );
   }
 
-  // Pantalla de seleccion de contenedor
-  if (!selectedContainer) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onLogout}>
-            <Text style={styles.backArrow}>{"\u2190"}</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>EcoCampus</Text>
-          <View style={styles.statusBadge}>
-            <View
-              style={[
-                styles.statusDot,
-                { backgroundColor: isOnline ? "#10b981" : "#ef4444" },
-              ]}
-            />
-            <Text style={styles.statusText}>
-              {isOnline ? "EN LINEA" : "SIN CONEXION"}
-            </Text>
-          </View>
-        </View>
-
-        <ScrollView style={styles.scrollContent}>
-          <Text style={styles.sectionTitle}>Selecciona un contenedor</Text>
-          {containers.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.containerCard}
-              onPress={() => setSelectedContainer(item)}
-            >
-              <Text style={styles.containerCode}>{item.container_code}</Text>
-              <Text style={styles.containerInfo}>
-                Volumen: {item.volume_liters}L | Tara: {item.tare_weight}kg
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        <View style={styles.tabBar}>
-          <TouchableOpacity style={[styles.tabItem, styles.tabActive]}>
-            <Text style={styles.tabIconActive}>{"\u2630"}</Text>
-            <Text style={styles.tabTextActive}>ESCANEAR</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.tabItem} onPress={onSwitchToHistory}>
-            <Text style={styles.tabIcon}>{"\u27F2"}</Text>
-            <Text style={styles.tabText}>HISTORIAL</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
   // Formulario
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => setSelectedContainer(null)}>
+        <TouchableOpacity onPress={onBackToScanner}>
           <Text style={styles.backArrow}>{"\u2190"}</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>EcoCampus</Text>
@@ -630,25 +573,25 @@ export default function CollectionScreen({ onLogout, onSwitchToHistory, onSubmit
       </View>
 
       {/* MODAL DE INCIDENCIAS */}
-{selectedContainer && user && (
-  <IncidentReportModal
-    visible={incidentModalVisible}
-    containerId={selectedContainer.id}
-    collectorId={user.id}
-    containerCode={selectedContainer.container_code}
-    formData={{
-      gross_weight: weight,
-      net_weight: weight - selectedContainer.tare_weight,
-      fill_level: fillLevel,
-      physical_state: physicalStates.join(","),
-      condition: conditions,
-      separation_level: separationLevel,
-    }}
-    onClose={() => setIncidentModalVisible(false)}
-    onSuccess={handleIncidentSuccess}
-    onSubmitSuccess={onSubmitSuccess}
-  />
-)}
+      {selectedContainer && user && (
+        <IncidentReportModal
+          visible={incidentModalVisible}
+          containerId={selectedContainer.id}
+          collectorId={user.id}
+          containerCode={selectedContainer.container_code}
+          formData={{
+            gross_weight: weight,
+            net_weight: weight - selectedContainer.tare_weight,
+            fill_level: fillLevel,
+            physical_state: physicalStates.join(","),
+            condition: conditions,
+            separation_level: separationLevel,
+          }}
+          onClose={() => setIncidentModalVisible(false)}
+          onSuccess={handleIncidentSuccess}
+          onSubmitSuccess={onSubmitSuccess}
+        />
+      )}
     </View>
   );
 }

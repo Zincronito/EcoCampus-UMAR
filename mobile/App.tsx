@@ -2,11 +2,19 @@ import React, { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import LoginScreen from "./src/screens/LoginScreen";
 import WelcomeScreen from "./src/screens/WelcomeScreen";
+import QRScannerScreen from "./src/screens/QRScannerScreen";
+import ScanSuccessScreen from "./src/screens/ScanSuccessScreen";
 import CollectionScreen from "./src/screens/CollectionScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
 import SubmitSuccessScreen from "./src/screens/SubmitSuccessScreen";
 
-type ScreenType = "welcome" | "scan" | "history" | "success";
+type ScreenType =
+  | "welcome"
+  | "scanner"
+  | "scanSuccess"
+  | "collection"
+  | "history"
+  | "submitSuccess";
 
 interface SuccessData {
   container_code: string;
@@ -22,6 +30,7 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenType>("welcome");
   const [user, setUser] = useState<any>(null);
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
+  const [selectedContainer, setSelectedContainer] = useState<any>(null);
 
   useEffect(() => {
     checkSession();
@@ -40,7 +49,7 @@ export default function App() {
 
         const hideWelcome = await AsyncStorage.getItem("hideWelcomeScreen");
         if (hideWelcome === "true") {
-          setCurrentScreen("scan");
+          setCurrentScreen("scanner");
         } else {
           setCurrentScreen("welcome");
         }
@@ -58,7 +67,7 @@ export default function App() {
 
     const hideWelcome = await AsyncStorage.getItem("hideWelcomeScreen");
     if (hideWelcome === "true") {
-      setCurrentScreen("scan");
+      setCurrentScreen("scanner");
     } else {
       setCurrentScreen("welcome");
     }
@@ -71,23 +80,44 @@ export default function App() {
     setUser(null);
     setCurrentScreen("welcome");
     setSuccessData(null);
+    setSelectedContainer(null);
   };
 
   const handleWelcomeContinue = () => {
-    setCurrentScreen("scan");
+    setCurrentScreen("scanner");
+  };
+
+  const handleContainerDetected = (container: any) => {
+    setSelectedContainer(container);
+    setCurrentScreen("scanSuccess");
+  };
+
+  const handleScanSuccessContinue = () => {
+    setCurrentScreen("collection");
+  };
+
+  const handleScanCancel = () => {
+    setSelectedContainer(null);
+    setCurrentScreen("scanner");
   };
 
   const handleSubmitSuccess = (data: SuccessData) => {
     setSuccessData(data);
-    setCurrentScreen("success");
+    setSelectedContainer(null);
+    setCurrentScreen("submitSuccess");
   };
 
   const handleNewScan = () => {
     setSuccessData(null);
-    setCurrentScreen("scan");
+    setSelectedContainer(null);
+    setCurrentScreen("scanner");
   };
 
-  const switchToScan = () => setCurrentScreen("scan");
+  const switchToScanner = () => {
+    setSelectedContainer(null);
+    setCurrentScreen("scanner");
+  };
+
   const switchToHistory = () => setCurrentScreen("history");
 
   if (loading) {
@@ -102,7 +132,40 @@ export default function App() {
     return <WelcomeScreen user={user} onContinue={handleWelcomeContinue} />;
   }
 
-  if (currentScreen === "success" && successData) {
+  if (currentScreen === "scanner") {
+    return (
+      <QRScannerScreen
+        onContainerDetected={handleContainerDetected}
+        onSwitchToHistory={switchToHistory}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  if (currentScreen === "scanSuccess" && selectedContainer) {
+    return (
+      <ScanSuccessScreen
+        container={selectedContainer}
+        onContinue={handleScanSuccessContinue}
+        onCancel={handleScanCancel}
+        onSwitchToHistory={switchToHistory}
+      />
+    );
+  }
+
+  if (currentScreen === "collection" && selectedContainer) {
+    return (
+      <CollectionScreen
+        onLogout={handleLogout}
+        onSwitchToHistory={switchToHistory}
+        onSubmitSuccess={handleSubmitSuccess}
+        preselectedContainer={selectedContainer}
+        onBackToScanner={switchToScanner}
+      />
+    );
+  }
+
+  if (currentScreen === "submitSuccess" && successData) {
     return (
       <SubmitSuccessScreen
         data={successData}
@@ -114,15 +177,13 @@ export default function App() {
 
   if (currentScreen === "history") {
     return (
-      <HistoryScreen onSwitchToScan={switchToScan} onLogout={handleLogout} />
+      <HistoryScreen onSwitchToScan={switchToScanner} onLogout={handleLogout} />
     );
   }
 
-  return (
-    <CollectionScreen
-      onLogout={handleLogout}
-      onSwitchToHistory={switchToHistory}
-      onSubmitSuccess={handleSubmitSuccess}
-    />
-  );
+  return <QRScannerScreen
+    onContainerDetected={handleContainerDetected}
+    onSwitchToHistory={switchToHistory}
+    onLogout={handleLogout}
+  />;
 }
