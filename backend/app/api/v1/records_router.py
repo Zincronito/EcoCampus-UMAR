@@ -25,7 +25,7 @@ router = APIRouter()
 
 class CollectionRecordCreate(BaseModel):
     """Schema para crear un nuevo reporte de recolección"""
-    gross_weight: float
+    gross_weight: float | None = None
     net_weight: float | None = None
     fill_level: str
     physical_state: str  # Nuevo campo
@@ -40,8 +40,8 @@ class CollectionRecordCreate(BaseModel):
 class CollectionRecordResponse(BaseModel):
     """Schema para retornar un reporte de recolección"""
     id: uuid.UUID
-    gross_weight: float
-    net_weight: float | None
+    gross_weight: float | None = None
+    net_weight: float | None = None
     fill_level: str
     physical_state: str  # Nuevo campo
     condition: str
@@ -82,11 +82,13 @@ async def create_collection_record(
             raise HTTPException(status_code=404, detail="Contenedor no encontrado")
         
         # Validar que el peso bruto sea mayor que la tara
-        if record.gross_weight <= container.tare_weight:
-            raise HTTPException(
-                status_code=400,
-                detail=f"El peso bruto ({record.gross_weight} kg) debe ser mayor que la tara del contenedor ({container.tare_weight} kg)"
-            )
+        # Validar que el peso bruto sea mayor que la tara (solo si se proporciono peso)
+        if record.gross_weight is not None:
+            if record.gross_weight <= container.tare_weight:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"El peso bruto ({record.gross_weight} kg) debe ser mayor que la tara del contenedor ({container.tare_weight} kg)"
+                )
         
         # Validar que el recolector existe
         collector_result = await db.execute(

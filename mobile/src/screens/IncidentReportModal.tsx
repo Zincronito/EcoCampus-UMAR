@@ -205,8 +205,8 @@ export default function IncidentReportModal({
       setSubmitting(true);
 
       const recordPayload = {
-        gross_weight: formData.gross_weight,
-        net_weight: formData.net_weight,
+        gross_weight: formData.gross_weight > 0 ? formData.gross_weight : null,
+        net_weight: formData.net_weight > 0 ? formData.net_weight : null,
         fill_level: formData.fill_level,
         physical_state: formData.physical_state,
         condition: formData.condition.join(","),
@@ -242,6 +242,7 @@ export default function IncidentReportModal({
         container_code: containerCode,
         category_name: categoryName,
         weight: formData.net_weight,
+        weight_recorded: formData.gross_weight > 0,  // ← AGREGAR
         has_incident: true,
         timestamp: new Date().toISOString(),
       });

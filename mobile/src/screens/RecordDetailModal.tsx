@@ -138,14 +138,26 @@ export default function RecordDetailModal({
             <View style={styles.card}>
               <View style={styles.row}>
                 <Text style={styles.label}>Peso bruto:</Text>
-                <Text style={styles.value}>
-                  {record.gross_weight.toFixed(1)} kg
+                <Text style={[
+                  styles.value,
+                  record.gross_weight === null && styles.valueEmpty
+                ]}>
+                  {record.gross_weight !== null
+                    ? `${record.gross_weight.toFixed(1)} kg`
+                    : "No registrado"
+                  }
                 </Text>
               </View>
               <View style={styles.row}>
                 <Text style={styles.label}>Peso neto:</Text>
-                <Text style={styles.value}>
-                  {record.net_weight.toFixed(1)} kg
+                <Text style={[
+                  styles.value,
+                  record.net_weight === null && styles.valueEmpty
+                ]}>
+                  {record.net_weight !== null
+                    ? `${record.net_weight.toFixed(1)} kg`
+                    : "No registrado"
+                  }
                 </Text>
               </View>
               <View style={styles.row}>
@@ -217,8 +229,8 @@ export default function RecordDetailModal({
                           record.incident.status === "open"
                             ? "#ef4444"
                             : record.incident.status === "in_progress"
-                            ? "#f59e0b"
-                            : "#10b981",
+                              ? "#f59e0b"
+                              : "#10b981",
                       },
                     ]}
                   >
@@ -226,8 +238,8 @@ export default function RecordDetailModal({
                       {record.incident.status === "open"
                         ? "ABIERTA"
                         : record.incident.status === "in_progress"
-                        ? "EN PROCESO"
-                        : "RESUELTA"}
+                          ? "EN PROCESO"
+                          : "RESUELTA"}
                     </Text>
                   </View>
                 </View>
@@ -344,5 +356,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     letterSpacing: 0.5,
+  },
+  valueEmpty: {
+    color: "#9ca3af",
+    fontStyle: "italic",
   },
 });

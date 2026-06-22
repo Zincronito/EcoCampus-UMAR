@@ -16,8 +16,8 @@ import RecordDetailModal from "./RecordDetailModal";
 
 interface RecordItem {
   id: string;
-  gross_weight: number;
-  net_weight: number;
+  gross_weight: number | null;
+  net_weight: number | null;
   fill_level: string;
   physical_state: string;
   condition: string;
@@ -221,8 +221,14 @@ export default function HistoryScreen({ onSwitchToScan, onLogout }: any) {
                 <View style={styles.dataDivider} />
                 <View style={styles.dataCol}>
                   <Text style={styles.dataLabel}>PESO NETO</Text>
-                  <Text style={styles.dataValue}>
-                    {record.net_weight.toFixed(1)} kg
+                  <Text style={[
+                    styles.dataValue,
+                    record.net_weight === null && styles.dataValueEmpty
+                  ]}>
+                    {record.net_weight !== null
+                      ? `${record.net_weight.toFixed(1)} kg`
+                      : "Sin registrar"
+                    }
                   </Text>
                 </View>
               </View>
@@ -461,6 +467,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     color: "#000",
+  },
+  dataValueEmpty: {
+    color: "#9ca3af",
+    fontStyle: "italic",
+    fontSize: 13,
   },
   incidentBadge: {
     backgroundColor: "#fef3c7",

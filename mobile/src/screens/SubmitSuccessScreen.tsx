@@ -12,6 +12,7 @@ interface SubmitSuccessScreenProps {
     container_code: string;
     category_name: string;
     weight: number;
+    weight_recorded: boolean;
     has_incident: boolean;
     timestamp: string;
   };
@@ -78,7 +79,15 @@ export default function SubmitSuccessScreen({
 
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Peso:</Text>
-            <Text style={styles.summaryValue}>{data.weight.toFixed(1)} kg</Text>
+            <Text style={[
+              styles.summaryValue,
+              !data.weight_recorded && styles.summaryValueEmpty
+            ]}>
+              {data.weight_recorded
+                ? `${data.weight.toFixed(1)} kg`
+                : "No registrado"
+              }
+            </Text>
           </View>
 
           <View style={styles.summaryRow}>
@@ -300,5 +309,9 @@ const styles = StyleSheet.create({
     color: "#fff",
     marginTop: 2,
     letterSpacing: 0.5,
+  },
+  summaryValueEmpty: {
+    color: "#9ca3af",
+    fontStyle: "italic",
   },
 });

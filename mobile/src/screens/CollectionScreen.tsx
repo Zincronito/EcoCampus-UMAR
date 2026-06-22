@@ -7,11 +7,19 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  TextInput,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { containerService, recordService } from "../services/authService";
 import IncidentReportModal from "./IncidentReportModal";
+import {
+  ArrowLeft,
+  ScanLine,
+  RotateCcw,
+  AlertTriangle,
+  Check,
+} from "lucide-react-native";
 
 interface Container {
   id: string;
@@ -37,7 +45,8 @@ export default function CollectionScreen({
   const [isOnline, setIsOnline] = useState(true);
 
   // Formulario
-  const [weight, setWeight] = useState(0);
+  const [willWeigh, setWillWeigh] = useState<boolean | null>(null);
+  const [weightInput, setWeightInput] = useState<string>("");
   const [fillLevel, setFillLevel] = useState<string>("");
   const [physicalStates, setPhysicalStates] = useState<string[]>([]);
   const [conditions, setConditions] = useState<string[]>([]);
@@ -65,12 +74,6 @@ export default function CollectionScreen({
     } catch (error) {
       console.error("Error al cargar usuario:", error);
     }
-  };
-
-
-  const incrementWeight = () => setWeight(weight + 1);
-  const decrementWeight = () => {
-    if (weight > 0) setWeight(weight - 1);
   };
 
   const togglePhysicalState = (value: string) => {
@@ -108,136 +111,117 @@ export default function CollectionScreen({
     });
   };
 
-  // Validar si el formulario está completo (para feedback visual)
-  const isFormComplete =
-    weight > 0 &&
-    fillLevel !== "" &&
-    physicalStates.length > 0 &&
-    conditions.length > 0 &&
-    separationLevel !== "";
+  // Parsear el peso ingresado a numero flotante
+  const getWeightNumber = (): number => {
+    const num = parseFloat(weightInput.replace(",", "."));
+    return isNaN(num) ? 0 : num;
+  };
 
-  const handleOpenIncident = () => {
-    // Validar que el formulario esté completo antes de permitir reportar incidencia
-    if (weight === 0) {
-      Alert.alert(
-        "Formulario incompleto",
-        "Antes de reportar una incidencia, completa el peso del contenedor"
-      );
-      return;
+  // Validar si el formulario esta completo (para feedback visual del boton incidencia)
+  const isFormComplete = (() => {
+    if (willWeigh === null) return false;
+    if (willWeigh === true) {
+      const w = getWeightNumber();
+      if (w === 0 || w <= (selectedContainer?.tare_weight || 0)) return false;
+    }
+    return (
+      fillLevel !== "" &&
+      physicalStates.length > 0 &&
+      conditions.length > 0 &&
+      separationLevel !== ""
+    );
+  })();
+
+  const validateForm = (): string | null => {
+    if (!selectedContainer || !user) {
+      return "Selecciona un contenedor primero";
+    }
+
+    if (willWeigh === null) {
+      return "Indica si vas a pesar el contenedor";
+    }
+
+    if (willWeigh === true) {
+      const weight = getWeightNumber();
+      if (weight === 0) {
+        return "Ingresa el peso del contenedor";
+      }
+      if (weight <= selectedContainer.tare_weight) {
+        return `El peso (${weight} kg) debe ser mayor que la tara del contenedor (${selectedContainer.tare_weight} kg).`;
+      }
     }
 
     if (!fillLevel) {
-      Alert.alert(
-        "Formulario incompleto",
-        "Antes de reportar una incidencia, selecciona el nivel de llenado"
-      );
-      return;
+      return "Selecciona el nivel de llenado";
     }
 
     if (physicalStates.length === 0) {
-      Alert.alert(
-        "Formulario incompleto",
-        "Antes de reportar una incidencia, selecciona el estado físico"
-      );
-      return;
+      return "Selecciona el estado fisico del contenedor";
     }
 
     if (conditions.length === 0) {
-      Alert.alert(
-        "Formulario incompleto",
-        "Antes de reportar una incidencia, selecciona al menos una condición"
-      );
-      return;
+      return "Selecciona al menos una condicion";
     }
 
     if (!separationLevel) {
-      Alert.alert(
-        "Formulario incompleto",
-        "Antes de reportar una incidencia, selecciona el nivel de separación"
-      );
-      return;
+      return "Selecciona el nivel de separacion";
     }
 
-    // Si todo está completo, abrir el modal
+    return null;
+  };
+
+  const handleOpenIncident = () => {
+    const error = validateForm();
+    if (error) {
+      Alert.alert("Formulario incompleto", error);
+      return;
+    }
     setIncidentModalVisible(true);
   };
 
   const handleSubmit = async () => {
-    if (!selectedContainer || !user) {
-      Alert.alert("Error", "Selecciona un contenedor primero");
-      return;
-    }
-
-    if (weight === 0) {
-      Alert.alert("Error", "Ingresa el peso del contenedor");
-      return;
-    }
-
-    // Validar que el peso sea mayor que la tara
-    if (weight <= selectedContainer.tare_weight) {
-      Alert.alert(
-        "Peso inválido",
-        `El peso (${weight} kg) debe ser mayor que la tara del contenedor (${selectedContainer.tare_weight} kg). El contenedor vacío pesa ${selectedContainer.tare_weight} kg.`
-      );
-      return;
-    }
-
-    if (!fillLevel) {
-      Alert.alert("Error", "Selecciona el nivel de llenado");
-      return;
-    }
-
-    if (physicalStates.length === 0) {
-      Alert.alert("Error", "Selecciona el estado fisico del contenedor");
-      return;
-    }
-
-    if (conditions.length === 0) {
-      Alert.alert("Error", "Selecciona al menos una condicion");
-      return;
-    }
-
-    if (!separationLevel) {
-      Alert.alert("Error", "Selecciona el nivel de separacion");
+    const error = validateForm();
+    if (error) {
+      Alert.alert("Error", error);
       return;
     }
 
     try {
       setSubmitting(true);
 
-      const netWeight = weight - selectedContainer.tare_weight;
+      const weight = willWeigh ? getWeightNumber() : null;
+      const netWeight = weight ? weight - selectedContainer!.tare_weight : null;
 
-      const payload = {
+      const payload: any = {
         gross_weight: weight,
         net_weight: netWeight,
         fill_level: fillLevel,
         physical_state: physicalStates.join(","),
         condition: conditions.join(","),
         separation_level: separationLevel,
-        container_id: selectedContainer.id,
+        container_id: selectedContainer!.id,
         collector_id: user.id,
       };
 
-      // Obtener categoria del contenedor para mostrar en pantalla de exito
-      const containerData = await containerService.getById(selectedContainer.id);
+      const containerData = await containerService.getById(selectedContainer!.id);
       const categoryName = containerData?.waste_category?.name || "Sin categoria";
 
       await recordService.create(payload);
 
-      // Limpiar formulario
-      const containerCode = selectedContainer.container_code;
+      const containerCode = selectedContainer!.container_code;
       setSelectedContainer(null);
-      setWeight(0);
+      setWillWeigh(null);
+      setWeightInput("");
       setFillLevel("");
       setPhysicalStates([]);
       setConditions([]);
       setSeparationLevel("");
 
-      // Navegar a pantalla de exito
       onSubmitSuccess({
         container_code: containerCode,
         category_name: categoryName,
-        weight: netWeight,
+        weight: netWeight || 0,
+        weight_recorded: weight !== null,
         has_incident: false,
         timestamp: new Date().toISOString(),
       });
@@ -249,9 +233,9 @@ export default function CollectionScreen({
   };
 
   const handleIncidentSuccess = () => {
-    // Después de reportar incidencia, volver a lista de contenedores
     setSelectedContainer(null);
-    setWeight(0);
+    setWillWeigh(null);
+    setWeightInput("");
     setFillLevel("");
     setPhysicalStates([]);
     setConditions([]);
@@ -267,12 +251,19 @@ export default function CollectionScreen({
     );
   }
 
-  // Formulario
+  if (!selectedContainer) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.loadingText}>No hay contenedor seleccionado</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={onBackToScanner}>
-          <Text style={styles.backArrow}>{"\u2190"}</Text>
+          <ArrowLeft size={24} color="#1e40af" strokeWidth={2.5} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>EcoCampus</Text>
         <View style={styles.statusBadge}>
@@ -291,36 +282,78 @@ export default function CollectionScreen({
       <ScrollView style={styles.scrollContent}>
         <Text style={styles.mainTitle}>Mediciones de Carga</Text>
 
-        {/* PESO */}
+        {/* PESO - PREGUNTA*/}
         <View style={styles.cardBox}>
-          <Text style={styles.cardTitle}>Peso (kg)</Text>
+          <Text style={styles.cardTitle}>¿Vas a pesar el contenedor?</Text>
           <Text style={styles.cardHint}>
-            Tara del contenedor: {selectedContainer!.tare_weight} kg
+            Tara del contenedor: {selectedContainer.tare_weight} kg
           </Text>
-          <View style={styles.weightRow}>
-            <TouchableOpacity style={styles.btnMinus} onPress={decrementWeight}>
-              <Text style={styles.btnSymbol}>-</Text>
+
+          <View style={styles.weighDecisionRow}>
+            <TouchableOpacity
+              style={[
+                styles.weighBtn,
+                styles.weighBtnYes,
+                willWeigh === true && styles.weighBtnSelected,
+              ]}
+              onPress={() => setWillWeigh(true)}
+            >
+              <Check size={20} color="#fff" strokeWidth={2.5} style={{ marginRight: 6 }} />
+              <Text style={styles.weighBtnText}>SI</Text>
             </TouchableOpacity>
-            <Text style={styles.weightValue}>{weight}</Text>
-            <TouchableOpacity style={styles.btnPlus} onPress={incrementWeight}>
-              <Text style={styles.btnSymbol}>+</Text>
+
+            <TouchableOpacity
+              style={[
+                styles.weighBtn,
+                styles.weighBtnNo,
+                willWeigh === false && styles.weighBtnSelected,
+              ]}
+              onPress={() => {
+                setWillWeigh(false);
+                setWeightInput("");
+              }}
+            >
+              <Text style={styles.weighBtnText}>NO</Text>
             </TouchableOpacity>
           </View>
-          {weight > 0 && weight <= selectedContainer!.tare_weight && (
-            <View style={styles.warningBox}>
-              <Text style={styles.warningText}>
-                {"\u26A0"} El peso debe ser mayor que la tara ({selectedContainer!.tare_weight} kg)
+
+          {willWeigh === true && (
+            <View style={styles.weightInputContainer}>
+              <Text style={styles.weightInputLabel}>Peso (kg)</Text>
+              <TextInput
+                style={styles.weightInput}
+                value={weightInput}
+                onChangeText={setWeightInput}
+                keyboardType="decimal-pad"
+                placeholder="Ej: 25.5"
+                placeholderTextColor="#9ca3af"
+              />
+              {weightInput !== "" && getWeightNumber() > 0 && getWeightNumber() <= selectedContainer.tare_weight && (
+                <View style={styles.warningBox}>
+                  <AlertTriangle size={14} color="#dc2626" strokeWidth={2.5} style={{ marginRight: 6 }} />
+                  <Text style={styles.warningText}>
+                    El peso debe ser mayor que la tara ({selectedContainer.tare_weight} kg)
+                  </Text>
+                </View>
+              )}
+              {weightInput !== "" && getWeightNumber() > selectedContainer.tare_weight && (
+                <Text style={styles.netWeightHint}>
+                  Peso neto del residuo: {(getWeightNumber() - selectedContainer.tare_weight).toFixed(2)} kg
+                </Text>
+              )}
+            </View>
+          )}
+
+          {willWeigh === false && (
+            <View style={styles.noWeighInfo}>
+              <Text style={styles.noWeighText}>
+                El peso no se registrará en este reporte.
               </Text>
             </View>
           )}
-          {weight > selectedContainer!.tare_weight && (
-            <Text style={styles.netWeightHint}>
-              Peso neto del residuo: {(weight - selectedContainer!.tare_weight).toFixed(1)} kg
-            </Text>
-          )}
         </View>
 
-        {/* NIVEL DE LLENADO (escala 0-5) */}
+        {/* NIVEL DE LLENADO */}
         <View style={styles.cardBox}>
           <Text style={styles.cardTitle}>Nivel de Llenado</Text>
 
@@ -389,11 +422,12 @@ export default function CollectionScreen({
             ]}
             onPress={() => setFillLevel("5")}
           >
-            <Text style={styles.desbordadoText}>{"\u26A0"} 5 - Desbordado</Text>
+            <AlertTriangle size={20} color="#fff" strokeWidth={2.5} style={{ marginRight: 8 }} />
+            <Text style={styles.desbordadoText}>5 - Desbordado</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ESTADO FISICO (multi-select con logica) */}
+        {/* ESTADO FISICO */}
         <View style={styles.cardBox}>
           <Text style={styles.cardTitle}>Estado fisico del contenedor</Text>
           <Text style={styles.cardHint}>Puedes seleccionar varias opciones</Text>
@@ -438,7 +472,7 @@ export default function CollectionScreen({
           </TouchableOpacity>
         </View>
 
-        {/* CONDICIONES (multi-select) */}
+        {/* CONDICIONES */}
         <View style={styles.cardBox}>
           <Text style={styles.cardTitle}>¿En que condiciones esta el contenedor?</Text>
           <Text style={styles.cardHint}>Puedes seleccionar varias opciones</Text>
@@ -566,7 +600,8 @@ export default function CollectionScreen({
           ]}
           onPress={handleOpenIncident}
         >
-          <Text style={styles.incidentText}>{"\u26A0"} REPORTAR INCIDENCIA</Text>
+          <AlertTriangle size={20} color="#fff" strokeWidth={2.5} style={{ marginRight: 8 }} />
+          <Text style={styles.incidentText}>REPORTAR INCIDENCIA</Text>
         </TouchableOpacity>
 
         {/* BOTON SIGUIENTE */}
@@ -587,16 +622,15 @@ export default function CollectionScreen({
 
       <View style={styles.tabBar}>
         <TouchableOpacity style={[styles.tabItem, styles.tabActive]}>
-          <Text style={styles.tabIconActive}>{"\u2630"}</Text>
+          <ScanLine size={20} color="#fff" strokeWidth={2.5} />
           <Text style={styles.tabTextActive}>ESCANEAR</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.tabItem} onPress={onSwitchToHistory}>
-          <Text style={styles.tabIcon}>{"\u27F2"}</Text>
+          <RotateCcw size={20} color="#000" strokeWidth={2.5} />
           <Text style={styles.tabText}>HISTORIAL</Text>
         </TouchableOpacity>
       </View>
 
-      {/* MODAL DE INCIDENCIAS */}
       {selectedContainer && user && (
         <IncidentReportModal
           visible={incidentModalVisible}
@@ -604,8 +638,8 @@ export default function CollectionScreen({
           collectorId={user.id}
           containerCode={selectedContainer.container_code}
           formData={{
-            gross_weight: weight,
-            net_weight: weight - selectedContainer.tare_weight,
+            gross_weight: willWeigh ? getWeightNumber() : 0,
+            net_weight: willWeigh ? getWeightNumber() - selectedContainer.tare_weight : 0,
             fill_level: fillLevel,
             physical_state: physicalStates.join(","),
             condition: conditions,
@@ -646,11 +680,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#000",
   },
-  backArrow: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#000",
-  },
   headerTitle: {
     fontSize: 22,
     fontWeight: "bold",
@@ -677,30 +706,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     flex: 1,
     padding: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 12,
-    color: "#000",
-  },
-  containerCard: {
-    backgroundColor: "#fff",
-    borderRadius: 6,
-    padding: 16,
-    marginBottom: 10,
-    borderWidth: 2,
-    borderColor: "#000",
-  },
-  containerCode: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#000",
-  },
-  containerInfo: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 4,
   },
   mainTitle: {
     fontSize: 30,
@@ -729,37 +734,93 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontStyle: "italic",
   },
-  weightRow: {
+  weighDecisionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 12,
+  },
+  weighBtn: {
+    flex: 1,
+    padding: 18,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: "#000",
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 10,
-  },
-  btnMinus: {
-    width: 70,
-    height: 70,
-    backgroundColor: "#000",
     justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 4,
   },
-  btnPlus: {
-    width: 70,
-    height: 70,
-    backgroundColor: "#dc2626",
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 4,
+  weighBtnYes: {
+    backgroundColor: "#10b981",
   },
-  btnSymbol: {
-    fontSize: 40,
-    fontWeight: "bold",
+  weighBtnNo: {
+    backgroundColor: "#6b7280",
+  },
+  weighBtnSelected: {
+    borderWidth: 4,
+    borderColor: "#1e40af",
+  },
+  weighBtnText: {
     color: "#fff",
+    fontSize: 20,
+    fontWeight: "bold",
+    letterSpacing: 1,
   },
-  weightValue: {
-    fontSize: 50,
+  weightInputContainer: {
+    marginTop: 8,
+  },
+  weightInputLabel: {
+    fontSize: 14,
     fontWeight: "bold",
     color: "#000",
+    marginBottom: 6,
+  },
+  weightInput: {
+    backgroundColor: "#f3f4f6",
+    borderWidth: 2,
+    borderColor: "#000",
+    borderRadius: 6,
+    padding: 14,
+    fontSize: 24,
+    color: "#000",
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  warningBox: {
+    backgroundColor: "#fef2f2",
+    borderWidth: 1,
+    borderColor: "#dc2626",
+    borderRadius: 4,
+    padding: 8,
+    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  warningText: {
+    color: "#dc2626",
+    fontSize: 12,
+    fontWeight: "600",
+    flex: 1,
+  },
+  netWeightHint: {
+    color: "#059669",
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+    marginTop: 10,
+  },
+  noWeighInfo: {
+    backgroundColor: "#f3f4f6",
+    borderRadius: 4,
+    padding: 10,
+    marginTop: 8,
+  },
+  noWeighText: {
+    color: "#6b7280",
+    fontSize: 13,
+    textAlign: "center",
+    fontStyle: "italic",
   },
   fillLevelRow: {
     flexDirection: "row",
@@ -795,7 +856,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#dc2626",
     padding: 16,
     borderRadius: 4,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     borderWidth: 2,
     borderColor: "#000",
   },
@@ -849,7 +912,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#dc2626",
     padding: 18,
     borderRadius: 4,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     marginBottom: 12,
     borderWidth: 2,
     borderColor: "#000",
@@ -886,50 +951,24 @@ const styles = StyleSheet.create({
   tabItem: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 14,
+    justifyContent: "center",
+    paddingVertical: 12,
   },
   tabActive: {
     backgroundColor: "#000",
   },
-  tabIcon: {
-    fontSize: 20,
-    color: "#000",
-  },
-  tabIconActive: {
-    fontSize: 20,
-    color: "#fff",
-  },
   tabText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "bold",
     color: "#000",
-    marginTop: 2,
+    marginTop: 4,
+    letterSpacing: 0.5,
   },
   tabTextActive: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "bold",
     color: "#fff",
-    marginTop: 2,
-  },
-  warningBox: {
-    backgroundColor: "#fef2f2",
-    borderWidth: 1,
-    borderColor: "#dc2626",
-    borderRadius: 4,
-    padding: 8,
-    marginTop: 10,
-  },
-  warningText: {
-    color: "#dc2626",
-    fontSize: 12,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  netWeightHint: {
-    color: "#059669",
-    fontSize: 12,
-    fontWeight: "600",
-    textAlign: "center",
-    marginTop: 10,
+    marginTop: 4,
+    letterSpacing: 0.5,
   },
 });

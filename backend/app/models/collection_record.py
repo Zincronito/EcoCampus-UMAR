@@ -16,7 +16,7 @@ from app.models.base import TimestampMixin, UUIDMixin
 class CollectionRecord(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "collection_records"
 
-    gross_weight: Mapped[float] = mapped_column("grossWeight", Float, nullable=False)
+    gross_weight: Mapped[float | None] = mapped_column("grossWeight", Float, nullable=True)
     net_weight: Mapped[float | None] = mapped_column("netWeight", Float)
     fill_level: Mapped[str] = mapped_column("fillLevel", String(50), nullable=False)
     physical_state: Mapped[str] = mapped_column("physicalState", String(50), nullable=False)
