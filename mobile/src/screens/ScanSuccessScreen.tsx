@@ -6,6 +6,15 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
+import {
+  Menu,
+  User,
+  CheckCircle2,
+  Trash2,
+  ScanLine,
+  RotateCcw,
+  ChevronRight,
+} from "lucide-react-native";
 
 interface ScanSuccessScreenProps {
   container: {
@@ -58,10 +67,10 @@ export default function ScanSuccessScreen({
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onCancel}>
-          <Text style={styles.menuIcon}>{"\u2630"}</Text>
+          <Menu size={24} color="#000" strokeWidth={2.5} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>EcoCampus UMAR</Text>
-        <Text style={styles.profileIcon}>{"\u24D8"}</Text>
+        <User size={24} color="#000" strokeWidth={2.5} />
       </View>
 
       <ScrollView
@@ -72,7 +81,7 @@ export default function ScanSuccessScreen({
         {/* Icono de éxito */}
         <View style={styles.iconContainer}>
           <View style={styles.successIcon}>
-            <Text style={styles.checkmark}>{"\u2713"}</Text>
+            <CheckCircle2 size={80} color="#fff" strokeWidth={2.5} />
           </View>
         </View>
 
@@ -82,7 +91,7 @@ export default function ScanSuccessScreen({
         {/* Card de contenedor detectado */}
         <View style={styles.containerCard}>
           <View style={styles.cardHeader}>
-            <Text style={styles.containerIcon}>{"\uD83D\uDDD1\uFE0F"}</Text>
+            <Trash2 size={22} color="#1e40af" strokeWidth={2} style={{ marginRight: 8 }} />
             <Text style={styles.cardTitle}>Contenedor Detectado</Text>
           </View>
 
@@ -161,9 +170,8 @@ export default function ScanSuccessScreen({
 
         {/* Botones */}
         <TouchableOpacity style={styles.continueBtn} onPress={onContinue}>
-          <Text style={styles.continueBtnText}>
-            CONTINUAR {"\u2192"}
-          </Text>
+          <Text style={styles.continueBtnText}>CONTINUAR</Text>
+          <ChevronRight size={20} color="#fff" strokeWidth={2.5} style={{ marginLeft: 6 }} />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.cancelBtn} onPress={onCancel}>
@@ -176,11 +184,11 @@ export default function ScanSuccessScreen({
       {/* Tab Bar */}
       <View style={styles.tabBar}>
         <TouchableOpacity style={[styles.tabItem, styles.tabActive]}>
-          <Text style={styles.tabIconActive}>{"\u2630"}</Text>
+          <ScanLine size={20} color="#fff" strokeWidth={2.5} />
           <Text style={styles.tabTextActive}>ESCANEAR</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.tabItem} onPress={onSwitchToHistory}>
-          <Text style={styles.tabIcon}>{"\u27F2"}</Text>
+          <RotateCcw size={20} color="#000" strokeWidth={2.5} />
           <Text style={styles.tabText}>HISTORIAL</Text>
         </TouchableOpacity>
       </View>
@@ -204,20 +212,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: "#000",
   },
-  menuIcon: {
-    fontSize: 22,
-    color: "#000",
-  },
   headerTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#000",
     flex: 1,
     textAlign: "center",
-  },
-  profileIcon: {
-    fontSize: 22,
-    color: "#000",
   },
   scrollContent: {
     flex: 1,
@@ -240,11 +240,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#000",
   },
-  checkmark: {
-    fontSize: 70,
-    color: "#fff",
-    fontWeight: "bold",
-  },
   title: {
     fontSize: 32,
     fontWeight: "bold",
@@ -264,10 +259,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 10,
-  },
-  containerIcon: {
-    fontSize: 22,
-    marginRight: 8,
   },
   cardTitle: {
     fontSize: 16,
@@ -340,7 +331,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#1e3a8a",
     padding: 16,
     borderRadius: 8,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     borderWidth: 2,
     borderColor: "#000",
     marginBottom: 10,
@@ -374,31 +367,24 @@ const styles = StyleSheet.create({
   tabItem: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 14,
+    justifyContent: "center",
+    paddingVertical: 12,
   },
   tabActive: {
     backgroundColor: "#000",
-  },
-  tabIcon: {
-    fontSize: 20,
-    color: "#000",
-  },
-  tabIconActive: {
-    fontSize: 20,
-    color: "#fff",
   },
   tabText: {
     fontSize: 11,
     fontWeight: "bold",
     color: "#000",
-    marginTop: 2,
+    marginTop: 4,
     letterSpacing: 0.5,
   },
   tabTextActive: {
     fontSize: 11,
     fontWeight: "bold",
     color: "#fff",
-    marginTop: 2,
+    marginTop: 4,
     letterSpacing: 0.5,
   },
 });

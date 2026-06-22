@@ -14,6 +14,13 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import {
+  ArrowLeft,
+  Camera,
+  Mic,
+  X,
+  Send,
+} from "lucide-react-native";
+import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from "expo-speech-recognition";
@@ -75,6 +82,7 @@ export default function IncidentReportModal({
 
   useSpeechRecognitionEvent("result", (event) => {
     const text = event.results[0]?.transcript;
+
     if (text) {
       setDescription(text);
     }
@@ -130,8 +138,8 @@ export default function IncidentReportModal({
       // Iniciar reconocimiento
       ExpoSpeechRecognitionModule.start({
         lang: "es-MX",
-        interimResults: false,
-        continuous: false,
+        interimResults: true,
+        continuous: true,
         requiresOnDeviceRecognition: false,
         addsPunctuation: true,
       });
@@ -250,7 +258,7 @@ export default function IncidentReportModal({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.headerLeft}>
-            <Text style={styles.backArrow}>{"\u2190"}</Text>
+            <ArrowLeft size={22} color="#1e40af" strokeWidth={2.5} style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Reportar Incidencia</Text>
           </TouchableOpacity>
           <Text style={styles.statusText}>EN LINEA</Text>
@@ -270,7 +278,7 @@ export default function IncidentReportModal({
                 <Image source={{ uri: photoUri }} style={styles.photoPreview} />
               ) : (
                 <>
-                  <Text style={styles.evidenceIcon}>{"\uD83D\uDCF7"}</Text>
+                  <Camera size={38} color="#000" strokeWidth={2} style={{ marginBottom: 6 }} />
                   <Text style={styles.evidenceLabel}>FOTO</Text>
                 </>
               )}
@@ -280,8 +288,8 @@ export default function IncidentReportModal({
               style={[styles.voiceBox, isListening && styles.voiceBoxActive]}
               onPress={handleVoicePress}
             >
-              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                <Text style={styles.evidenceIcon}>{"\uD83C\uDFA4"}</Text>
+              <Animated.View style={{ transform: [{ scale: pulseAnim }], marginBottom: 6 }}>
+                <Mic size={38} color="#fff" strokeWidth={2} />
               </Animated.View>
               <Text style={[styles.evidenceLabel, { color: "#fff" }]}>
                 {isListening ? "ESCUCHANDO..." : "VOZ"}
@@ -295,23 +303,34 @@ export default function IncidentReportModal({
               style={styles.removePhotoBtn}
               onPress={handleRemovePhoto}
             >
-              <Text style={styles.removePhotoText}>
-                {"\u2715"} Eliminar foto
-              </Text>
+              <X size={14} color="#dc2626" strokeWidth={2.5} style={{ marginRight: 6 }} />
+              <Text style={styles.removePhotoText}>Eliminar foto</Text>
             </TouchableOpacity>
           )}
 
           {/* DESCRIPCION DETALLADA */}
           <Text style={styles.sectionTitle}>Descripción Detallada</Text>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Añade más detalles sobre la incidencia..."
-            placeholderTextColor="#9ca3af"
-            multiline
-            numberOfLines={4}
-            value={description}
-            onChangeText={setDescription}
-          />
+          <View style={styles.textInputContainer}>
+            <TextInput
+              style={[
+                styles.textInput,
+                isListening && styles.textInputListening,
+              ]}
+              placeholder="Añade más detalles sobre la incidencia..."
+              placeholderTextColor="#9ca3af"
+              multiline
+              numberOfLines={4}
+              value={description}
+              onChangeText={setDescription}
+              editable={!isListening}
+            />
+            {isListening && (
+              <View style={styles.listeningIndicator}>
+                <View style={styles.listeningDot} />
+                <Text style={styles.listeningText}>Escuchando...</Text>
+              </View>
+            )}
+          </View>
 
           {/* SUGERENCIAS RAPIDAS */}
           <Text style={styles.sectionTitle}>Sugerencias Rápidas</Text>
@@ -340,7 +359,10 @@ export default function IncidentReportModal({
             {submitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.sendBtnText}>ENVIAR REPORTE</Text>
+              <>
+                <Send size={18} color="#fff" strokeWidth={2.5} style={{ marginRight: 8 }} />
+                <Text style={styles.sendBtnText}>ENVIAR REPORTE</Text>
+              </>
             )}
           </TouchableOpacity>
 
@@ -474,7 +496,9 @@ const styles = StyleSheet.create({
     borderColor: "#dc2626",
     borderRadius: 4,
     padding: 8,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     marginBottom: 8,
   },
   removePhotoText: {
@@ -522,11 +546,13 @@ const styles = StyleSheet.create({
   sendBtn: {
     backgroundColor: "#1e3a8a",
     padding: 16,
+    margin: 16,
     borderRadius: 6,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     borderWidth: 2,
     borderColor: "#000",
-    marginTop: 8,
   },
   btnDisabled: {
     opacity: 0.6,
@@ -557,6 +583,38 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#000",
     marginTop: 2,
+    letterSpacing: 0.5,
+  },
+  textInputContainer: {
+    position: "relative",
+  },
+  textInputListening: {
+    borderColor: "#dc2626",
+    borderWidth: 3,
+    backgroundColor: "#fef2f2",
+  },
+  listeningIndicator: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#dc2626",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  listeningDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#fff",
+    marginRight: 6,
+  },
+  listeningText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "bold",
     letterSpacing: 0.5,
   },
 });

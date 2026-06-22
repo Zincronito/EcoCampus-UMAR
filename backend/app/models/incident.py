@@ -16,7 +16,7 @@ class Incident(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "incidents"
 
     description: Mapped[str] = mapped_column(String(500), nullable=False)
-    quick_tag: Mapped[str | None] = mapped_column("quickTag", String(50))
+    quick_tag: Mapped[str | None] = mapped_column("quickTag", String(255))
     photo_url: Mapped[str | None] = mapped_column("photoUrl", String(500))
     status: Mapped[str] = mapped_column(String(50), default="open")
 

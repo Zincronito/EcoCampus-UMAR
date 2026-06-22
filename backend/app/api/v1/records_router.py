@@ -65,15 +65,12 @@ async def create_collection_record(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Crea un nuevo reporte de recolección.
+    Crea un nuevo reporte de recoleccion.
     
-    Este endpoint es llamado cuando un recolector reporta un contenedor.
-    Valida que el contenedor y el recolector existan.
-    
-    Args:
-        record: datos del reporte (peso, condición, separación, etc)
-    
-    Retorna: el reporte creado con su ID
+    Valida:
+    - Que el contenedor exista
+    - Que el recolector exista
+    - Que el peso bruto sea mayor que la tara del contenedor
     """
     try:
         # Validar que el contenedor existe
@@ -83,6 +80,13 @@ async def create_collection_record(
         container = container_result.scalar_one_or_none()
         if not container:
             raise HTTPException(status_code=404, detail="Contenedor no encontrado")
+        
+        # Validar que el peso bruto sea mayor que la tara
+        if record.gross_weight <= container.tare_weight:
+            raise HTTPException(
+                status_code=400,
+                detail=f"El peso bruto ({record.gross_weight} kg) debe ser mayor que la tara del contenedor ({container.tare_weight} kg)"
+            )
         
         # Validar que el recolector existe
         collector_result = await db.execute(
@@ -97,7 +101,7 @@ async def create_collection_record(
             gross_weight=record.gross_weight,
             net_weight=record.net_weight,
             fill_level=record.fill_level,
-            physical_state=record.physical_state,  # Nuevo campo
+            physical_state=record.physical_state,
             condition=record.condition,
             separation_level=record.separation_level,
             container_id=record.container_id,

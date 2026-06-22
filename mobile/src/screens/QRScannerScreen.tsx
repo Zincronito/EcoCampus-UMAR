@@ -11,6 +11,12 @@ import {
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { containerService } from "../services/authService";
+import {
+  ArrowLeft,
+  Edit3,
+  ScanLine,
+  RotateCcw,
+} from "lucide-react-native";
 
 interface QRScannerScreenProps {
   onContainerDetected: (container: any) => void;
@@ -91,7 +97,7 @@ export default function QRScannerScreen({
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onLogout}>
-            <Text style={styles.backArrow}>{"\u2190"}</Text>
+            <ArrowLeft size={24} color="#1e40af" strokeWidth={2.5} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>GESTION DE RE..</Text>
           <Text style={styles.statusText}>EN LINEA</Text>
@@ -114,9 +120,8 @@ export default function QRScannerScreen({
             style={styles.manualBtn}
             onPress={() => setManualInputVisible(true)}
           >
-            <Text style={styles.manualBtnText}>
-              INGRESAR ID MANUALMENTE {"\u270E"}
-            </Text>
+            <Edit3 size={16} color="#000" strokeWidth={2.5} style={{ marginRight: 8 }} />
+            <Text style={styles.manualBtnText}>INGRESAR ID MANUALMENTE</Text>
           </TouchableOpacity>
         </View>
 
@@ -176,7 +181,7 @@ export default function QRScannerScreen({
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onLogout}>
-          <Text style={styles.backArrow}>{"\u2190"}</Text>
+          <ArrowLeft size={24} color="#1e40af" strokeWidth={2.5} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>GESTION DE RE..</Text>
         <Text style={styles.statusText}>EN LINEA</Text>
@@ -223,20 +228,19 @@ export default function QRScannerScreen({
           style={styles.manualBtnInline}
           onPress={() => setManualInputVisible(true)}
         >
-          <Text style={styles.manualBtnInlineText}>
-            INGRESAR ID MANUALMENTE {"\u270E"}
-          </Text>
+          <Edit3 size={16} color="#000" strokeWidth={2.5} style={{ marginRight: 8 }} />
+          <Text style={styles.manualBtnInlineText}>INGRESAR ID MANUALMENTE</Text>
         </TouchableOpacity>
       </View>
 
       {/* Tab Bar */}
       <View style={styles.tabBar}>
         <TouchableOpacity style={[styles.tabItem, styles.tabActive]}>
-          <Text style={styles.tabIconActive}>{"\u2630"}</Text>
+          <ScanLine size={20} color="#fff" strokeWidth={2.5} />
           <Text style={styles.tabTextActive}>ESCANEAR</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.tabItem} onPress={onSwitchToHistory}>
-          <Text style={styles.tabIcon}>{"\u27F2"}</Text>
+          <RotateCcw size={20} color="#000" strokeWidth={2.5} />
           <Text style={styles.tabText}>HISTORIAL</Text>
         </TouchableOpacity>
       </View>
@@ -271,11 +275,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     borderBottomWidth: 2,
     borderBottomColor: "#000",
-  },
-  backArrow: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#1e40af",
   },
   headerTitle: {
     fontSize: 16,
@@ -383,7 +382,9 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     padding: 14,
     width: "100%",
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
   },
   manualBtnInlineText: {
     fontSize: 13,
@@ -431,6 +432,9 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 2,
     borderColor: "#000",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
   manualBtnText: {
     fontSize: 13,
@@ -514,31 +518,24 @@ const styles = StyleSheet.create({
   tabItem: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 14,
+    justifyContent: "center",
+    paddingVertical: 12,
   },
   tabActive: {
     backgroundColor: "#000",
-  },
-  tabIcon: {
-    fontSize: 20,
-    color: "#000",
-  },
-  tabIconActive: {
-    fontSize: 20,
-    color: "#fff",
   },
   tabText: {
     fontSize: 11,
     fontWeight: "bold",
     color: "#000",
-    marginTop: 2,
+    marginTop: 4,
     letterSpacing: 0.5,
   },
   tabTextActive: {
     fontSize: 11,
     fontWeight: "bold",
     color: "#fff",
-    marginTop: 2,
+    marginTop: 4,
     letterSpacing: 0.5,
   },
 });

@@ -7,6 +7,15 @@ import {
   StyleSheet,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  Leaf,
+  ClipboardList,
+  BarChart3,
+  AlertTriangle,
+  Camera,
+  ChevronRight,
+  Check,
+} from "lucide-react-native";
 
 interface WelcomeScreenProps {
   user: any;
@@ -25,7 +34,7 @@ export default function WelcomeScreen({ user, onContinue }: WelcomeScreenProps) 
 
   const protocols = [
     {
-      icon: "\uD83D\uDCCB",
+      Icon: ClipboardList,
       iconColor: "#1e40af",
       title: "Registro Obligatorio",
       description:
@@ -33,7 +42,7 @@ export default function WelcomeScreen({ user, onContinue }: WelcomeScreenProps) 
       accentColor: "#1e40af",
     },
     {
-      icon: "\uD83D\uDCCA",
+      Icon: BarChart3,
       iconColor: "#1e40af",
       title: "Datos Numéricos",
       description:
@@ -41,7 +50,7 @@ export default function WelcomeScreen({ user, onContinue }: WelcomeScreenProps) 
       accentColor: "#1e40af",
     },
     {
-      icon: "\u26A0",
+      Icon: AlertTriangle,
       iconColor: "#dc2626",
       title: "Control de Residuos",
       description:
@@ -49,7 +58,7 @@ export default function WelcomeScreen({ user, onContinue }: WelcomeScreenProps) 
       accentColor: "#dc2626",
     },
     {
-      icon: "\uD83D\uDCF7",
+      Icon: Camera,
       iconColor: "#1e40af",
       title: "Evidencia Fotográfica",
       description:
@@ -68,7 +77,7 @@ export default function WelcomeScreen({ user, onContinue }: WelcomeScreenProps) 
         {/* Logo */}
         <View style={styles.logoContainer}>
           <View style={styles.logoBox}>
-            <Text style={styles.logoIcon}>{"\uD83C\uDF3F"}</Text>
+            <Leaf size={32} color="#10b981" strokeWidth={2.5} />
           </View>
         </View>
 
@@ -79,29 +88,30 @@ export default function WelcomeScreen({ user, onContinue }: WelcomeScreenProps) 
         </Text>
 
         {/* Protocolos */}
-        {protocols.map((protocol, index) => (
-          <View key={index} style={styles.protocolCard}>
-            <View
-              style={[
-                styles.protocolAccent,
-                { backgroundColor: protocol.accentColor },
-              ]}
-            />
-            <View style={styles.protocolContent}>
-              <View style={styles.protocolHeader}>
-                <Text
-                  style={[styles.protocolIcon, { color: protocol.iconColor }]}
-                >
-                  {protocol.icon}
+        {protocols.map((protocol, index) => {
+          const IconComponent = protocol.Icon;
+          return (
+            <View key={index} style={styles.protocolCard}>
+              <View
+                style={[
+                  styles.protocolAccent,
+                  { backgroundColor: protocol.accentColor },
+                ]}
+              />
+              <View style={styles.protocolContent}>
+                <View style={styles.protocolHeader}>
+                  <View style={styles.iconWrapper}>
+                    <IconComponent size={22} color={protocol.iconColor} strokeWidth={2} />
+                  </View>
+                  <Text style={styles.protocolTitle}>{protocol.title}</Text>
+                </View>
+                <Text style={styles.protocolDescription}>
+                  {protocol.description}
                 </Text>
-                <Text style={styles.protocolTitle}>{protocol.title}</Text>
               </View>
-              <Text style={styles.protocolDescription}>
-                {protocol.description}
-              </Text>
             </View>
-          </View>
-        ))}
+          );
+        })}
 
         {/* Checkbox no mostrar */}
         <TouchableOpacity
@@ -114,7 +124,7 @@ export default function WelcomeScreen({ user, onContinue }: WelcomeScreenProps) 
               doNotShowAgain && styles.checkboxChecked,
             ]}
           >
-            {doNotShowAgain && <Text style={styles.checkmark}>{"\u2713"}</Text>}
+            {doNotShowAgain && <Check size={14} color="#fff" strokeWidth={3} />}
           </View>
           <Text style={styles.checkboxLabel}>
             No volver a mostrar este mensaje
@@ -138,7 +148,8 @@ export default function WelcomeScreen({ user, onContinue }: WelcomeScreenProps) 
 
         {/* Botón Siguiente */}
         <TouchableOpacity style={styles.nextBtn} onPress={handleContinue}>
-          <Text style={styles.nextBtnText}>Siguiente {"\u2192"}</Text>
+          <Text style={styles.nextBtnText}>Siguiente</Text>
+          <ChevronRight size={20} color="#fff" strokeWidth={2.5} style={{ marginLeft: 4 }} />
         </TouchableOpacity>
 
         <View style={{ height: 20 }} />
@@ -214,9 +225,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 6,
   },
-  protocolIcon: {
-    fontSize: 22,
+  iconWrapper: {
     marginRight: 10,
+    width: 28,
+    height: 28,
+    justifyContent: "center",
+    alignItems: "center",
   },
   protocolTitle: {
     fontSize: 16,

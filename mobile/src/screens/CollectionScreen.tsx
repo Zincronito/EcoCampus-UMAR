@@ -173,6 +173,15 @@ export default function CollectionScreen({
       return;
     }
 
+    // Validar que el peso sea mayor que la tara
+    if (weight <= selectedContainer.tare_weight) {
+      Alert.alert(
+        "Peso inválido",
+        `El peso (${weight} kg) debe ser mayor que la tara del contenedor (${selectedContainer.tare_weight} kg). El contenedor vacío pesa ${selectedContainer.tare_weight} kg.`
+      );
+      return;
+    }
+
     if (!fillLevel) {
       Alert.alert("Error", "Selecciona el nivel de llenado");
       return;
@@ -285,6 +294,9 @@ export default function CollectionScreen({
         {/* PESO */}
         <View style={styles.cardBox}>
           <Text style={styles.cardTitle}>Peso (kg)</Text>
+          <Text style={styles.cardHint}>
+            Tara del contenedor: {selectedContainer!.tare_weight} kg
+          </Text>
           <View style={styles.weightRow}>
             <TouchableOpacity style={styles.btnMinus} onPress={decrementWeight}>
               <Text style={styles.btnSymbol}>-</Text>
@@ -294,6 +306,18 @@ export default function CollectionScreen({
               <Text style={styles.btnSymbol}>+</Text>
             </TouchableOpacity>
           </View>
+          {weight > 0 && weight <= selectedContainer!.tare_weight && (
+            <View style={styles.warningBox}>
+              <Text style={styles.warningText}>
+                {"\u26A0"} El peso debe ser mayor que la tara ({selectedContainer!.tare_weight} kg)
+              </Text>
+            </View>
+          )}
+          {weight > selectedContainer!.tare_weight && (
+            <Text style={styles.netWeightHint}>
+              Peso neto del residuo: {(weight - selectedContainer!.tare_weight).toFixed(1)} kg
+            </Text>
+          )}
         </View>
 
         {/* NIVEL DE LLENADO (escala 0-5) */}
@@ -886,5 +910,26 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#fff",
     marginTop: 2,
+  },
+  warningBox: {
+    backgroundColor: "#fef2f2",
+    borderWidth: 1,
+    borderColor: "#dc2626",
+    borderRadius: 4,
+    padding: 8,
+    marginTop: 10,
+  },
+  warningText: {
+    color: "#dc2626",
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  netWeightHint: {
+    color: "#059669",
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+    marginTop: 10,
   },
 });
