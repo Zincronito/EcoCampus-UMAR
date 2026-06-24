@@ -59,17 +59,20 @@ async def seed():
                 WasteCategory(
                     name="Orgánicos",
                     description="Residuos orgánicos biodegradables",
-                    color="#8B4513"
+                    color="#8B4513",
+                    density_kg_per_liter=0.5,
                 ),
                 WasteCategory(
                     name="Inorgánicos húmedos",
                     description="Residuos inorgánicos con humedad",
-                    color="#4169E1"
+                    color="#4169E1",
+                    density_kg_per_liter=0.5,
                 ),
                 WasteCategory(
                     name="Inorgánicos secos",
                     description="Residuos inorgánicos secos",
-                    color="#808080"
+                    color="#808080",
+                    density_kg_per_liter=0.2,
                 ),
             ]
             session.add_all(categories)

@@ -28,7 +28,7 @@ class CollectionRecordCreate(BaseModel):
     gross_weight: float | None = None
     net_weight: float | None = None
     fill_level: str
-    physical_state: str  # Nuevo campo
+    physical_state: str  
     condition: str
     separation_level: str
     container_id: uuid.UUID

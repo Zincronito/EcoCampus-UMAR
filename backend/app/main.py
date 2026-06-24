@@ -9,8 +9,7 @@ from app import models
 from app.core.config import settings
 
 # Importar routers
-from app.api.v1 import auth_router, containers_router, records_router, incidents_router
-
+from app.api.v1 import auth_router, containers_router, records_router, incidents_router, categories_router
 # Crear la app
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -46,6 +45,9 @@ app.include_router(records_router.router, prefix="/api/v1/records", tags=["recor
 
 # Incidents
 app.include_router(incidents_router.router, prefix="/api/v1/incidents", tags=["incidents"])
+
+# Categories
+app.include_router(categories_router.router, prefix="/api/v1", tags=["categories"])
 
 # ────────────────────────────────────────────────────────────
 

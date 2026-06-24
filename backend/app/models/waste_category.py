@@ -3,9 +3,8 @@ Modelo: Categoría de residuo.
 Ejemplo: Orgánico, Vidrio, PET, Papel y Cartón, RPBI, Inorgánico.
 """
 
-from sqlalchemy import String
+from sqlalchemy import Float, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
 from app.core.database import Base
 from app.models.base import TimestampMixin, UUIDMixin
 
@@ -18,6 +17,11 @@ class WasteCategory(Base, UUIDMixin, TimestampMixin):
     color: Mapped[str] = mapped_column(String(50), nullable=False)
     icon: Mapped[str | None] = mapped_column(String(50))
     is_active: Mapped[bool] = mapped_column(default=True)
+    # Densidad aproximada del residuo en kg/L (para calculo volumetrico)
+    # Editable desde el dashboard para ajustar con datos reales
+    density_kg_per_liter: Mapped[float | None] = mapped_column(
+        "densityKgPerLiter", Float, nullable=True
+    )
 
     # Relación: una categoría puede tener muchos contenedores
     containers: Mapped[list["Container"]] = relationship(back_populates="waste_category")
