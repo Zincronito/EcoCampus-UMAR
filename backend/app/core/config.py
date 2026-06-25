@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     # ── CORS 
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8081"
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:3001,http://localhost:8081,http://192.168.1.73:3000,http://192.168.1.73:3001"
 
     @property
     def cors_origins_list(self) -> list[str]:
