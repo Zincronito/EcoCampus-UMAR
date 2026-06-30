@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.models.waste_category import WasteCategory
 
-router = APIRouter(prefix="/categories", tags=["Categorias"])
+router = APIRouter()
 
 
 # ============================================================

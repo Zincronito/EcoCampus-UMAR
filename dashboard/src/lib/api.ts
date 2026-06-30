@@ -202,19 +202,98 @@ export const categoriesAPI = {
 /**
  * Contenedores.
  */
-export const containersAPI = {
-  getAll: async () => {
-    const response = await api.get("/containers");
+/**
+ * Campus.
+ */
+export const campusAPI = {
+  getAll: async (onlyActive: boolean = true) => {
+    const response = await api.get(`/campus?only_active=${onlyActive}`);
     return response.data;
   },
+  
+  getById: async (id: string) => {
+    const response = await api.get(`/campus/${id}`);
+    return response.data;
+  },
+};
 
+/**
+ * Ubicaciones.
+ */
+export const locationsAPI = {
+  getAll: async (onlyActive: boolean = true, campusId?: string) => {
+    const params = new URLSearchParams();
+    params.append("only_active", String(onlyActive));
+    if (campusId) {
+      params.append("campus_id", campusId);
+    }
+    const response = await api.get(`/locations?${params.toString()}`);
+    return response.data;
+  },
+  
+  getById: async (id: string) => {
+    const response = await api.get(`/locations/${id}`);
+    return response.data;
+  },
+  
+  create: async (data: any) => {
+    const response = await api.post("/locations", data);
+    return response.data;
+  },
+  
+  update: async (id: string, data: any) => {
+    const response = await api.patch(`/locations/${id}`, data);
+    return response.data;
+  },
+  
+  delete: async (id: string) => {
+    await api.delete(`/locations/${id}`);
+  },
+};
+
+/**
+ * Contenedores.
+ */
+export const containersAPI = {
+  getAll: async (onlyActive: boolean = true, locationId?: string, wasteCategoryId?: string) => {
+    const params = new URLSearchParams();
+    params.append("only_active", String(onlyActive));
+    if (locationId) {
+      params.append("location_id", locationId);
+    }
+    if (wasteCategoryId) {
+      params.append("waste_category_id", wasteCategoryId);
+    }
+    const response = await api.get(`/containers?${params.toString()}`);
+    return response.data;
+  },
+  
   getById: async (id: string) => {
     const response = await api.get(`/containers/${id}`);
     return response.data;
   },
-
+  
   getByCode: async (code: string) => {
     const response = await api.get(`/containers/code/${code}`);
+    return response.data;
+  },
+  
+  create: async (data: any) => {
+    const response = await api.post("/containers", data);
+    return response.data;
+  },
+  
+  update: async (id: string, data: any) => {
+    const response = await api.patch(`/containers/${id}`, data);
+    return response.data;
+  },
+  
+  delete: async (id: string) => {
+    await api.delete(`/containers/${id}`);
+  },
+
+  getNextCode: async (campusId: string) => {
+    const response = await api.get(`/containers/next-code/${campusId}`);
     return response.data;
   },
 };

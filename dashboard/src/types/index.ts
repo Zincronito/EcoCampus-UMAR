@@ -14,12 +14,17 @@ export interface Campus {
   id: string;
   name: string;
   code: string;
+  address?: string | null;
+  is_active: boolean;
 }
 
 export interface Location {
   id: string;
   name: string;
-  sector: string;
+  sector: string | null;
+  location_type: string | null;
+  description: string | null;
+  is_active: boolean;
   campus_id: string;
   campus?: Campus;
 }
@@ -30,6 +35,7 @@ export interface WasteCategory {
   description: string | null;
   color: string;
   icon: string | null;
+  icon_url?: string | null;
   is_active: boolean;
   density_kg_per_liter: number | null;
 }
@@ -37,11 +43,13 @@ export interface WasteCategory {
 export interface Container {
   id: string;
   container_code: string;
-  volume_liters: number;
   tare_weight: number;
-  status: "active" | "inactive" | "maintenance";
-  location_id: string | null;
-  waste_category_id: string | null;
+  volume_liters: number | null;
+  status: string;
+  qr_generated: boolean;
+  is_active: boolean;
+  location_id: string;
+  waste_category_id: string;
   waste_category?: WasteCategory;
   location?: Location;
 }

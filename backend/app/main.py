@@ -9,7 +9,7 @@ from app import models
 from app.core.config import settings
 
 # Importar routers
-from app.api.v1 import auth_router, containers_router, records_router, incidents_router, categories_router
+from app.api.v1 import auth_router, containers_router, records_router, incidents_router, categories_router, locations_router, campus_router
 # Crear la app
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -47,8 +47,13 @@ app.include_router(records_router.router, prefix="/api/v1/records", tags=["recor
 app.include_router(incidents_router.router, prefix="/api/v1/incidents", tags=["incidents"])
 
 # Categories
-app.include_router(categories_router.router, prefix="/api/v1", tags=["categories"])
+app.include_router(categories_router.router, prefix="/api/v1/categories", tags=["categories"])
 
+# Campus
+app.include_router(campus_router.router, prefix="/api/v1/campus", tags=["campus"])
+
+# Locations
+app.include_router(locations_router.router, prefix="/api/v1/locations", tags=["locations"])
 # ────────────────────────────────────────────────────────────
 
 @app.get("/")
