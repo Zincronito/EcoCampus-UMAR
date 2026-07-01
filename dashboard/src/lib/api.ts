@@ -312,3 +312,36 @@ export const recordsAPI = {
     return response.data;
   },
 };
+/**
+ * Recolectores (usuarios con rol 'collector').
+ */
+export const collectorsAPI = {
+  getAll: async (onlyActive: boolean = true) => {
+    const response = await api.get(`/collectors?only_active=${onlyActive}`);
+    return response.data;
+  },
+
+  getById: async (id: string) => {
+    const response = await api.get(`/collectors/${id}`);
+    return response.data;
+  },
+
+  getNextId: async (campusCode: string) => {
+    const response = await api.get(`/collectors/next-id/${campusCode}`);
+    return response.data;
+  },
+
+  create: async (data: any) => {
+    const response = await api.post("/collectors", data);
+    return response.data;
+  },
+
+  update: async (id: string, data: any) => {
+    const response = await api.patch(`/collectors/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: string) => {
+    await api.delete(`/collectors/${id}`);
+  },
+};

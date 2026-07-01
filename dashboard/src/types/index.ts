@@ -6,9 +6,16 @@ export interface User {
   id: string;
   employee_id: string;
   full_name: string;
+  email?: string | null;
+  phone?: string | null;
   role: "admin" | "collector" | "supervisor";
+  shift?: string | null;
+  assigned_sector?: string | null;
   is_active: boolean;
 }
+
+// Tipo específico para recolectores (alias)
+export type Collector = User;
 
 export interface Campus {
   id: string;

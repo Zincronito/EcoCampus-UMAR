@@ -9,7 +9,7 @@ from app import models
 from app.core.config import settings
 
 # Importar routers
-from app.api.v1 import auth_router, containers_router, records_router, incidents_router, categories_router, locations_router, campus_router
+from app.api.v1 import auth_router, containers_router, records_router, incidents_router, categories_router, locations_router, campus_router, collectors_router
 # Crear la app
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -54,6 +54,9 @@ app.include_router(campus_router.router, prefix="/api/v1/campus", tags=["campus"
 
 # Locations
 app.include_router(locations_router.router, prefix="/api/v1/locations", tags=["locations"])
+
+# Collectors
+app.include_router(collectors_router.router, prefix="/api/v1/collectors", tags=["collectors"])
 # ────────────────────────────────────────────────────────────
 
 @app.get("/")

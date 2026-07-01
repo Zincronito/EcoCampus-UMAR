@@ -1,4 +1,4 @@
-"""API v1 Routes - Endpoints de autenticación, contenedores, recolección e incidentes."""
+"""API v1 Routes."""
 from . import (
     auth_router,
     containers_router,
@@ -7,6 +7,7 @@ from . import (
     categories_router,
     campus_router,
     locations_router,
+    collectors_router,
 )
 __all__ = [
     "auth_router",
@@ -16,4 +17,5 @@ __all__ = [
     "categories_router",
     "campus_router",
     "locations_router",
+    "collectors_router",
 ]
