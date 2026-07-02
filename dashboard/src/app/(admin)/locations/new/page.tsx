@@ -171,7 +171,7 @@ export default function NewLocationPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           {/* Columna izquierda: Formulario - 2 columnas */}
           <div className="lg:col-span-2 space-y-6">
             {/* Informacion basica */}
@@ -305,7 +305,7 @@ export default function NewLocationPage() {
 
           {/* Columna derecha: Vista Previa */}
           <div>
-            <Card className="bg-gradient-to-br from-blue-50 to-white sticky top-6">
+            <Card className="bg-gradient-to-br from-blue-50 to-white">
               <CardHeader>
                 <CardTitle className="text-sm text-gray-600 flex items-center gap-2">
                   <Info className="w-4 h-4" />

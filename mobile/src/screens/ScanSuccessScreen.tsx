@@ -30,7 +30,11 @@ interface ScanSuccessScreenProps {
     location?: {
       name: string;
       sector: string;
-      campus: string;
+      campus: {          // ✅ Ahora es objeto
+        id?: string;
+        name: string;
+        code: string;
+      };
     };
   };
   onContinue: () => void;
@@ -115,7 +119,7 @@ export default function ScanSuccessScreen({
           <View style={styles.dataRow}>
             <Text style={styles.dataLabel}>CAMPUS</Text>
             <Text style={styles.dataValue}>
-              {container.location?.campus || "N/A"}
+              {container.location?.campus?.name || "N/A"}
             </Text>
           </View>
 

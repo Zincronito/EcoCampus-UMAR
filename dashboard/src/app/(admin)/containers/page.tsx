@@ -42,17 +42,22 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import CategoryIcon from "@/components/shared/CategoryIcon";
+import { QrCodeIcon } from "lucide-react";
+import QRCodeCard from "@/components/qr/QRCodeCard";
 
-import { containersAPI, categoriesAPI, campusAPI } from "@/lib/api";
-import type { Container, WasteCategory, Campus } from "@/types";
+import { containersAPI, categoriesAPI, campusAPI, locationsAPI } from "@/lib/api";
+import type { Container, WasteCategory, Campus, Location} from "@/types";
 
 type FilterType = "all" | "active" | "inactive";
 
 export default function ContainersPage() {
   const [containers, setContainers] = useState<Container[]>([]);
   const [categories, setCategories] = useState<WasteCategory[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [campuses, setCampuses] = useState<Campus[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedContainer, setSelectedContainer] = useState<Container | null>(null);
+  const [showQRModal, setShowQRModal] = useState(false);
 
   // Filtros
   const [searchTerm, setSearchTerm] = useState("");
@@ -69,23 +74,25 @@ export default function ContainersPage() {
   }, []);
 
   const loadData = async () => {
-    try {
-      setLoading(true);
-      const [containersData, categoriesData, campusesData] = await Promise.all([
-        containersAPI.getAll(false), // Traer todos
-        categoriesAPI.getAll(false),
-        campusAPI.getAll(),
-      ]);
-      setContainers(containersData);
-      setCategories(categoriesData);
-      setCampuses(campusesData);
-    } catch (error: any) {
-      toast.error("Error al cargar los datos");
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
+    const [containersData, categoriesData, campusesData, locationsData] = await Promise.all([
+      containersAPI.getAll(false), // Traer todos
+      categoriesAPI.getAll(false),
+      campusAPI.getAll(),
+      locationsAPI.getAll(false), // Agregar esta línea
+    ]);
+    setContainers(containersData);
+    setCategories(categoriesData);
+    setCampuses(campusesData);
+    setLocations(locationsData); // Agregar esta línea
+  } catch (error: any) {
+    toast.error("Error al cargar los datos");
+    console.error(error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleToggleActive = async () => {
     if (!containerToToggle) return;
@@ -332,16 +339,31 @@ export default function ContainersPage() {
                     </div>
 
                     <div className="flex gap-1">
-                      <Link href={`/containers/${container.id}/edit`}>
+                      <div className="flex gap-1">
+                        <Link href={`/containers/${container.id}/edit`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-gray-600 hover:text-blue-600"
+                            title="Editar"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </Link>
+
                         <Button
                           variant="ghost"
                           size="sm"
                           className="text-gray-600 hover:text-blue-600"
-                          title="Editar"
+                          onClick={() => {
+                            setSelectedContainer(container);
+                            setShowQRModal(true);
+                          }}
+                          title="Ver QR"
                         >
-                          <Edit className="w-4 h-4" />
+                          <QrCodeIcon className="w-4 h-4" />
                         </Button>
-                      </Link>
+                      </div>
                       {container.is_active ? (
                         <Button
                           variant="ghost"
@@ -393,7 +415,29 @@ export default function ContainersPage() {
                       </div>
                     </div>
                   </div>
-
+                  {/* QR Modal */}
+                  {showQRModal && selectedContainer && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                      <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                        <h2 className="text-xl font-bold mb-4">Código QR del Contenedor</h2>
+                        <QRCodeCard
+                          container={selectedContainer}
+                          category={categories.find(
+                            (c) => c.id === selectedContainer.waste_category_id
+                          )}
+                          location={locations.find(
+                            (l) => l.id === selectedContainer.location_id
+                          )}
+                        />
+                        <button
+                          onClick={() => setShowQRModal(false)}
+                          className="mt-4 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                        >
+                          Cerrar
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {/* Ubicación */}
                   <div className="flex items-start gap-2 pt-3 border-t border-gray-100">
                     <MapPin className="w-4 h-4 text-gray-500 mt-0.5 shrink-0" />
