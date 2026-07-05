@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from app.core.database import get_db
+from app.core.security import verify_password
 from app.models.user import User
 
 router = APIRouter()
@@ -33,9 +34,7 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
         if not user:
             raise HTTPException(status_code=401, detail="Usuario no encontrado")
         
-        # Para demo: comparar PIN en texto plano
-        # En producción: usar check_password_hash
-        if request.pin != "1234" and request.pin != "0000":
+        if not verify_password(request.pin, user.hashed_pin):
             raise HTTPException(status_code=401, detail="PIN incorrecto")
         
         return LoginResponse(

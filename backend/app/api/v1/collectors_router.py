@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel, Field
-
+from app.core.security import hash_password
 from app.core.database import get_db
 from app.models.user import User
 from app.models.campus import Campus
@@ -203,7 +203,7 @@ async def create_collector(
             full_name=collector.full_name,
             email=collector.email,
             phone=collector.phone,
-            hashed_pin=collector.pin,  # NOTA: en texto plano por ahora
+            hashed_pin=hash_password(collector.pin),
             role="collector",
             shift=collector.shift,
             assigned_sector=collector.assigned_sector,
@@ -252,7 +252,7 @@ async def update_collector(
         # PIN: si viene, actualizar; si no, no tocar
         if "pin" in update_data:
             if update_data["pin"]:  # Solo si no es vacio
-                collector.hashed_pin = update_data["pin"]
+                collector.hashed_pin = hash_password(update_data["pin"])
             del update_data["pin"]
         
         for key, value in update_data.items():
