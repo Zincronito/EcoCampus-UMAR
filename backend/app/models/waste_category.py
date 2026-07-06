@@ -19,9 +19,7 @@ class WasteCategory(Base, UUIDMixin, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(default=True)
     # Densidad aproximada del residuo en kg/L (para calculo volumetrico)
     # Editable desde el dashboard para ajustar con datos reales
-    density_kg_per_liter: Mapped[float | None] = mapped_column(
-        "densityKgPerLiter", Float, nullable=True
-    )
+    density_kg_per_cubic_meter: Mapped[float] = mapped_column("densityKgPerCubicMeter", Float, default=650)
 
     # Relación: una categoría puede tener muchos contenedores
     containers: Mapped[list["Container"]] = relationship(back_populates="waste_category")

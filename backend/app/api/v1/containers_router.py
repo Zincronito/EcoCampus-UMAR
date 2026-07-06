@@ -55,7 +55,7 @@ class ContainerResponse(BaseModel):
     id: uuid.UUID
     container_code: str
     tare_weight: float
-    volume_liters: float | None
+    volume_cubic_meters : float | None
     status: str
     qr_generated: bool
     is_active: bool
@@ -71,7 +71,7 @@ class ContainerResponse(BaseModel):
 class ContainerCreate(BaseModel):
     container_code: str | None = Field(None, max_length=50)
     tare_weight: float = Field(..., ge=0)
-    volume_liters: float | None = Field(None, ge=0)
+    volume_cubic_meters : float | None = Field(None, ge=0)
     status: str = Field("active", max_length=50)
     location_id: uuid.UUID
     waste_category_id: uuid.UUID
@@ -80,7 +80,7 @@ class ContainerCreate(BaseModel):
 class ContainerUpdate(BaseModel):
     container_code: str | None = Field(None, min_length=1, max_length=50)
     tare_weight: float | None = Field(None, ge=0)
-    volume_liters: float | None = Field(None, ge=0)
+    volume_cubic_meters : float | None = Field(None, ge=0)
     status: str | None = Field(None, max_length=50)
     location_id: uuid.UUID | None = None
     waste_category_id: uuid.UUID | None = None
@@ -300,7 +300,7 @@ async def create_container(
         new_container = Container(
             container_code=final_code,
             tare_weight=container.tare_weight,
-            volume_liters=container.volume_liters,
+            volume_cubic_meters =container.volume_cubic_meters ,
             status=container.status,
             location_id=container.location_id,
             waste_category_id=container.waste_category_id,

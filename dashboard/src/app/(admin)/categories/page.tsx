@@ -297,8 +297,8 @@ export default function CategoriesPage() {
                   <div className="text-xs text-gray-500">
                     Densidad:{" "}
                     <span className="font-semibold text-gray-900">
-                      {category.density_kg_per_liter
-                        ? `${category.density_kg_per_liter} kg/L`
+                      {category.density_kg_per_cubic_meter
+                        ? `${category.density_kg_per_cubic_meter} kg/m³`
                         : "Sin definir"}
                     </span>
                   </div>

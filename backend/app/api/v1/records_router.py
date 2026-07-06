@@ -195,7 +195,7 @@ async def get_collector_records(
                 "container": {
                     "id": str(record.container.id),
                     "container_code": record.container.container_code,
-                    "volume_liters": record.container.volume_liters,
+                    " volume_cubic_meters": record.container. volume_cubic_meters,
                     "tare_weight": record.container.tare_weight,
                 } if record.container else None,
                 "category": {
@@ -302,7 +302,7 @@ async def get_reports(
                 "container": {
                     "id": str(record.container.id),
                     "container_code": record.container.container_code,
-                    "volume_liters": record.container.volume_liters,
+                    " volume_cubic_meters": record.container. volume_cubic_meters,
                     "tare_weight": record.container.tare_weight,
                 } if record.container else None,
                 "category": {

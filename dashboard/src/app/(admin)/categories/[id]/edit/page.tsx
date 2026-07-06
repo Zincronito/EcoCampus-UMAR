@@ -119,8 +119,8 @@ export default function EditCategoryPage() {
       setSelectedIcon(data.icon || "leaf");
       setSelectedColor(data.color || "#10b981");
       setDensity(
-        data.density_kg_per_liter !== null && data.density_kg_per_liter !== undefined
-          ? String(data.density_kg_per_liter)
+        data.density_kg_per_cubic_meter !== null && data.density_kg_per_cubic_meter !== undefined
+          ? String(data.density_kg_per_cubic_meter)
           : ""
       );
     } catch (error: any) {
@@ -136,9 +136,9 @@ export default function EditCategoryPage() {
     if (!originalCategory) return false;
 
     const originalDensity =
-      originalCategory.density_kg_per_liter !== null &&
-      originalCategory.density_kg_per_liter !== undefined
-        ? String(originalCategory.density_kg_per_liter)
+      originalCategory.density_kg_per_cubic_meter !== null &&
+      originalCategory.density_kg_per_cubic_meter !== undefined
+        ? String(originalCategory.density_kg_per_cubic_meter)
         : "";
 
     return (
@@ -185,7 +185,7 @@ export default function EditCategoryPage() {
           setSaving(false);
           return;
         }
-        payload.density_kg_per_liter = densityNum;
+        payload.density_kg_per_cubic_meter = densityNum;
       } else {
         payload.density_kg_per_liter = null;
       }
@@ -324,7 +324,7 @@ export default function EditCategoryPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="density">Densidad Estimada (kg/L)</Label>
+                  <Label htmlFor="density">Densidad Estimada (kg/m³)</Label>
                   <Input
                     id="density"
                     type="text"
@@ -336,10 +336,10 @@ export default function EditCategoryPage() {
                   <p className="text-xs text-gray-500">
                     Densidad aproximada del residuo. Ajustala con datos reales segun se generen reportes.
                   </p>
-                  {originalCategory?.density_kg_per_liter && (
+                  {originalCategory?.density_kg_per_cubic_meter && (
                     <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mt-2">
                       <p className="text-xs text-blue-900">
-                        <strong>Valor actual:</strong> {originalCategory.density_kg_per_liter} kg/L
+                        <strong>Valor actual:</strong> {originalCategory.density_kg_per_cubic_meter} kg/m³
                       </p>
                     </div>
                   )}
@@ -378,7 +378,7 @@ export default function EditCategoryPage() {
                         {name || "Nombre de Categoria"}
                       </p>
                       <p className="text-xs text-gray-500 truncate">
-                        {density ? `Densidad: ${density} kg/L` : "Sin densidad definida"}
+                        {density ? `Densidad: ${density} kg/m³` : "Sin densidad definida"}
                       </p>
                     </div>
                   </div>

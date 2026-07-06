@@ -44,7 +44,7 @@ export interface WasteCategory {
   icon: string | null;
   icon_url?: string | null;
   is_active: boolean;
-  density_kg_per_liter: number | null;
+  density_kg_per_cubic_meter: number | null;
 }
 
 export interface Container {

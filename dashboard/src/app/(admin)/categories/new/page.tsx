@@ -128,7 +128,7 @@ export default function NewCategoryPage() {
           setSaving(false);
           return;
         }
-        payload.density_kg_per_liter = densityNum;
+        payload.density_kg_per_cubic_meter = densityNum;
       }
 
       await categoriesAPI.create(payload);
@@ -249,7 +249,7 @@ export default function NewCategoryPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="density">
-                    Densidad Estimada (kg/L)
+                    Densidad Estimada (kg/m³)
                   </Label>
                   <Input
                     id="density"
@@ -264,8 +264,8 @@ export default function NewCategoryPage() {
                   </p>
                   <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mt-2">
                     <p className="text-xs text-blue-900">
-                      <strong>Referencia:</strong> Organicos: 0.5 kg/L, Inorganicos
-                      humedos: 0.5 kg/L, Inorganicos secos: 0.2 kg/L
+                      <strong>Referencia:</strong> Orgánicos: 500 kg/m³, Inorgánicos
+                      húmedos: 500 kg/m³, Inorgánicos secos: 200 kg/m³
                     </p>
                   </div>
                 </div>
@@ -303,7 +303,7 @@ export default function NewCategoryPage() {
                         {name || "Nombre de Categoria"}
                       </p>
                       <p className="text-xs text-gray-500 truncate">
-                        {density ? `Densidad: ${density} kg/L` : "Sin densidad definida"}
+                        {density ? `Densidad: ${density} kg/m³` : "Sin densidad definida"}
                       </p>
                     </div>
                   </div>

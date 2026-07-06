@@ -26,7 +26,7 @@ class CategoryResponse(BaseModel):
     color: str
     icon: str | None = None
     is_active: bool
-    density_kg_per_liter: float | None = None
+    density_kg_per_cubic_meter: float | None = None
 
 
 class CategoryCreate(BaseModel):
@@ -35,7 +35,7 @@ class CategoryCreate(BaseModel):
     description: str | None = Field(None, max_length=500)
     color: str = Field(..., max_length=50)
     icon: str | None = Field(None, max_length=50)
-    density_kg_per_liter: float | None = Field(None, ge=0)
+    density_kg_per_cubic_meter: float | None = Field(None, ge=0)
 
 
 class CategoryUpdate(BaseModel):
@@ -45,12 +45,12 @@ class CategoryUpdate(BaseModel):
     color: str | None = Field(None, max_length=50)
     icon: str | None = Field(None, max_length=50)
     is_active: bool | None = None
-    density_kg_per_liter: float | None = Field(None, ge=0)
+    density_kg_per_cubic_meter: float | None = Field(None, ge=0)
 
 
 class DensityUpdate(BaseModel):
     """Schema para actualizar solo la densidad"""
-    density_kg_per_liter: float = Field(..., ge=0)
+    density_kg_per_cubic_meter: float = Field(..., ge=0)
 
 
 # ============================================================
@@ -125,7 +125,7 @@ async def create_category(
             description=category.description,
             color=category.color,
             icon=category.icon,
-            density_kg_per_liter=category.density_kg_per_liter,
+             density_kg_per_cubic_meter=category. density_kg_per_cubic_meter,
             is_active=True,
         )
         
@@ -197,7 +197,7 @@ async def update_category_density(
         if not category:
             raise HTTPException(status_code=404, detail="Categoria no encontrada")
         
-        category.density_kg_per_liter = density_data.density_kg_per_liter
+        category. density_kg_per_cubic_meter = density_data. density_kg_per_cubic_meter
         
         await db.commit()
         await db.refresh(category)

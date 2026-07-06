@@ -17,7 +17,7 @@ class Container(Base, UUIDMixin, TimestampMixin):
 
     container_code: Mapped[str] = mapped_column("containerCode", String(50), unique=True, nullable=False)
     tare_weight: Mapped[float] = mapped_column("tareWeight", Float, nullable=False)
-    volume_liters: Mapped[float | None] = mapped_column("volumeLiters", Float)
+    volume_cubic_meters: Mapped[float | None] = mapped_column("volumeCubicMeters", Float)
     status: Mapped[str] = mapped_column(String(50), default="active")
     qr_generated: Mapped[bool] = mapped_column("qrGenerated", Boolean, default=False)
     is_active: Mapped[bool] = mapped_column("isActive", Boolean, default=True)
