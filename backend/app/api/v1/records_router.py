@@ -222,3 +222,113 @@ async def get_collector_records(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al obtener reportes: {str(e)}")
+    
+@router.get("/reports")
+async def get_reports(
+    date_from: str | None = None,
+    date_to: str | None = None,
+    collector_id: uuid.UUID | None = None,
+    campus_id: uuid.UUID | None = None,
+    category_id: uuid.UUID | None = None,
+    location_id: uuid.UUID | None = None,
+    has_incident: bool | None = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Obtiene reportes con filtros opcionales.
+    """
+    try:
+        from sqlalchemy.orm import selectinload
+        from app.models.container import Container
+        from app.models.location import Location
+        from datetime import datetime
+        
+        query = select(CollectionRecord)
+        
+        # Filtros
+        if date_from:
+            date_from_obj = datetime.fromisoformat(date_from)
+            query = query.where(CollectionRecord.created_at >= date_from_obj)
+        
+        if date_to:
+            date_to_obj = datetime.fromisoformat(date_to)
+            query = query.where(CollectionRecord.created_at <= date_to_obj)
+        
+        if collector_id:
+            query = query.where(CollectionRecord.collector_id == collector_id)
+        
+        if category_id:
+            query = query.where(Container.waste_category_id == category_id)
+        
+        if location_id:
+            query = query.where(Container.location_id == location_id)
+        
+        if campus_id:
+            query = query.join(Container).join(Location).where(Location.campus_id == campus_id)
+        
+        if has_incident is not None:
+            from app.models.incident import Incident
+            if has_incident:
+                query = query.where(CollectionRecord.incident.isnot(None))
+            else:
+                query = query.where(CollectionRecord.incident.is_(None))
+        
+        # Cargar relaciones
+        query = query.options(
+            selectinload(CollectionRecord.container)
+            .selectinload(Container.waste_category),
+            selectinload(CollectionRecord.container)
+            .selectinload(Container.location)
+            .selectinload(Location.campus),
+            selectinload(CollectionRecord.collector),
+            selectinload(CollectionRecord.incident),
+        ).order_by(CollectionRecord.created_at.desc())
+        
+        result = await db.execute(query)
+        records = result.scalars().all()
+        
+        # Armar respuesta
+        response = []
+        for record in records:
+            response.append({
+                "id": str(record.id),
+                "gross_weight": record.gross_weight,
+                "net_weight": record.net_weight,
+                "fill_level": record.fill_level,
+                "physical_state": record.physical_state,
+                "condition": record.condition,
+                "separation_level": record.separation_level,
+                "created_at": record.created_at.isoformat() if record.created_at else None,
+                "container": {
+                    "id": str(record.container.id),
+                    "container_code": record.container.container_code,
+                    "volume_liters": record.container.volume_liters,
+                    "tare_weight": record.container.tare_weight,
+                } if record.container else None,
+                "category": {
+                    "id": str(record.container.waste_category.id),
+                    "name": record.container.waste_category.name,
+                    "color": record.container.waste_category.color,
+                } if record.container and record.container.waste_category else None,
+                "location": {
+                    "name": record.container.location.name,
+                    "sector": record.container.location.sector,
+                    "campus": record.container.location.campus.name if record.container.location.campus else None,
+                } if record.container and record.container.location else None,
+                "incident": {
+                    "id": str(record.incident.id),
+                    "description": record.incident.description,
+                    "quick_tag": record.incident.quick_tag,
+                    "status": record.incident.status,
+                } if record.incident else None,
+                "collector": {
+                    "id": str(record.collector.id),
+                    "employee_id": record.collector.employee_id,
+                    "full_name": record.collector.full_name,
+                } if record.collector else None,
+            })
+        
+        return response
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al obtener reportes: {str(e)}")

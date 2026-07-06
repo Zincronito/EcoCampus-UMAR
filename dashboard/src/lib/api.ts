@@ -210,7 +210,7 @@ export const campusAPI = {
     const response = await api.get(`/campus?only_active=${onlyActive}`);
     return response.data;
   },
-  
+
   getById: async (id: string) => {
     const response = await api.get(`/campus/${id}`);
     return response.data;
@@ -230,22 +230,22 @@ export const locationsAPI = {
     const response = await api.get(`/locations?${params.toString()}`);
     return response.data;
   },
-  
+
   getById: async (id: string) => {
     const response = await api.get(`/locations/${id}`);
     return response.data;
   },
-  
+
   create: async (data: any) => {
     const response = await api.post("/locations", data);
     return response.data;
   },
-  
+
   update: async (id: string, data: any) => {
     const response = await api.patch(`/locations/${id}`, data);
     return response.data;
   },
-  
+
   delete: async (id: string) => {
     await api.delete(`/locations/${id}`);
   },
@@ -267,27 +267,27 @@ export const containersAPI = {
     const response = await api.get(`/containers?${params.toString()}`);
     return response.data;
   },
-  
+
   getById: async (id: string) => {
     const response = await api.get(`/containers/${id}`);
     return response.data;
   },
-  
+
   getByCode: async (code: string) => {
     const response = await api.get(`/containers/code/${code}`);
     return response.data;
   },
-  
+
   create: async (data: any) => {
     const response = await api.post("/containers", data);
     return response.data;
   },
-  
+
   update: async (id: string, data: any) => {
     const response = await api.patch(`/containers/${id}`, data);
     return response.data;
   },
-  
+
   delete: async (id: string) => {
     await api.delete(`/containers/${id}`);
   },
@@ -343,5 +343,29 @@ export const collectorsAPI = {
 
   delete: async (id: string) => {
     await api.delete(`/collectors/${id}`);
+  },
+};
+
+export const reportsAPI = {
+  getReports: async (filters?: {
+    date_from?: string;
+    date_to?: string;
+    collector_id?: string;
+    campus_id?: string;
+    category_id?: string;
+    location_id?: string;
+    has_incident?: boolean;
+  }) => {
+    const params = new URLSearchParams();
+    if (filters?.date_from) params.append("date_from", filters.date_from);
+    if (filters?.date_to) params.append("date_to", filters.date_to);
+    if (filters?.collector_id) params.append("collector_id", filters.collector_id);
+    if (filters?.campus_id) params.append("campus_id", filters.campus_id);
+    if (filters?.category_id) params.append("category_id", filters.category_id);
+    if (filters?.location_id) params.append("location_id", filters.location_id);
+    if (filters?.has_incident !== undefined) params.append("has_incident", String(filters.has_incident));
+
+    const response = await api.get(`/records/reports?${params.toString()}`);
+    return response.data;
   },
 };

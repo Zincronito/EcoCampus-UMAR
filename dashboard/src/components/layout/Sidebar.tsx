@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   Leaf,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logout } from "@/lib/api";
@@ -29,6 +30,7 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   
   // Sección de Análisis
   { icon: BarChart3, label: "Análisis y Métricas", href: "/analytics", section: "Sección de Análisis" },
+  { icon: FileText, label: "Reportes", href: "/reports", section: "Sección de Análisis" },
   
   // Sección de Gestión Operativa
   { icon: Tag, label: "Categorías", href: "/categories", section: "Sección de Gestión Operativa" },
