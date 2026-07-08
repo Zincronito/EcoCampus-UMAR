@@ -97,6 +97,7 @@ export default function ReportsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [locationFilter, setLocationFilter] = useState<string>("all");
   const [incidentFilter, setIncidentFilter] = useState<string>("all");
+  const [filterWeightType, setFilterWeightType] = useState<"all" | "real" | "estimated">("all");
 
   // Modal
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -144,6 +145,7 @@ export default function ReportsPage() {
       if (incidentFilter === "with") filters.has_incident = true;
       if (incidentFilter === "without") filters.has_incident = false;
 
+
       const data = await reportsAPI.getReports(filters);
       setReports(data);
       toast.success("Filtros aplicados");
@@ -178,7 +180,15 @@ export default function ReportsPage() {
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
 
-    return matchesSearch;
+    // Filtro por tipo de peso
+    let matchesWeightType = true;
+    if (filterWeightType === "real") {
+      matchesWeightType = !report.is_weight_estimated;
+    } else if (filterWeightType === "estimated") {
+      matchesWeightType = report.is_weight_estimated;
+    }
+
+    return matchesSearch && matchesWeightType;
   });
 
   const formatDate = (date: string) => {
@@ -344,6 +354,21 @@ export default function ReportsPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            {/* Tipo de Peso */}
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Tipo de Peso
+              </label>
+              <select
+                value={filterWeightType}
+                onChange={(e) => setFilterWeightType(e.target.value as "all" | "real" | "estimated")}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">Todos</option>
+                <option value="real">Solo Pesos Reales</option>
+                <option value="estimated">Solo Pesos Estimados</option>
+              </select>
             </div>
 
             {/* Incidencia */}
