@@ -294,6 +294,7 @@ async def get_reports(
                 "id": str(record.id),
                 "gross_weight": record.gross_weight,
                 "net_weight": record.net_weight,
+                "is_weight_estimated": record.is_weight_estimated,
                 "fill_level": record.fill_level,
                 "physical_state": record.physical_state,
                 "condition": record.condition,
@@ -374,6 +375,32 @@ async def get_analytics(
         
         result = await db.execute(query)
         records = result.scalars().all()
+# ──────────────────────────────────────────────────────────────────────────
+        # CALCULAR PESO APROXIMADO PARA REGISTROS SIN PESO NETO
+        # ──────────────────────────────────────────────────────────────────────────
+        for record in records:
+            if record.net_weight is None or record.net_weight == 0:
+                # Intentar calcular peso aproximado
+                if record.container and record.container.waste_category:
+                    volumen = record.container.volume_cubic_meters or 0
+                    densidad = record.container.waste_category.density_kg_per_cubic_meter or 0
+                    
+                    if volumen > 0 and densidad > 0:
+                        # Mapeo de fill_level a fracción
+                        fill_level_map = {
+                            "empty": 0,
+                            "quarter": 0.25,
+                            "half": 0.5,
+                            "three_quarter": 0.75,
+                            "full": 0.95,
+                            "overflow": 1.0,
+                        }
+                        fill_fraction = fill_level_map.get(record.fill_level, 0.5)
+
+                        # peso_aproximado = volumen × densidad × fracción_llenado
+                        peso_aprox = volumen * densidad * fill_fraction
+                        record.net_weight = peso_aprox
+                        record.is_weight_estimated = True  # ← MARCAR COMO ESTIMADO
         
         # Aplicar filtros en Python (post-procesamiento)
         if campus_id:

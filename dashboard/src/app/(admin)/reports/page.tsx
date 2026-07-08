@@ -45,6 +45,7 @@ interface Report {
   id: string;
   gross_weight: number | null;
   net_weight: number | null;
+  is_weight_estimated: boolean;
   fill_level: string;
   physical_state: string;
   condition: string;
@@ -462,9 +463,16 @@ export default function ReportsPage() {
                         </Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium">
-                          {report.net_weight?.toFixed(2) || "—"} kg
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">
+                            {report.net_weight?.toFixed(2) || "—"} kg
+                          </span>
+                          {report.is_weight_estimated && (
+                            <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded font-medium">
+                              Estimado
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-900">
@@ -569,9 +577,16 @@ export default function ReportsPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Peso Neto</p>
-                    <p className="font-medium">
-                      {selectedReport.net_weight?.toFixed(2) || "—"} kg
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="font-medium">
+                        {selectedReport.net_weight?.toFixed(2) || "—"} kg
+                      </p>
+                      {selectedReport.is_weight_estimated && (
+                        <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded font-medium">
+                          Estimado
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Nivel de Llenado</p>

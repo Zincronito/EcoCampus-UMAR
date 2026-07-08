@@ -65,6 +65,7 @@ export interface CollectionRecord {
   id: string;
   gross_weight: number | null;
   net_weight: number | null;
+  is_weight_estimated: boolean;  
   fill_level: string;
   physical_state: string;
   condition: string;

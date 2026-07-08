@@ -17,13 +17,14 @@ class CollectionRecord(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "collection_records"
 
     gross_weight: Mapped[float | None] = mapped_column("grossWeight", Float, nullable=True)
-    net_weight: Mapped[float | None] = mapped_column("netWeight", Float)
+    net_weight: Mapped[float | None] = mapped_column("netWeight", Float, nullable=True)
     fill_level: Mapped[str] = mapped_column("fillLevel", String(50), nullable=False)
     physical_state: Mapped[str] = mapped_column("physicalState", String(50), nullable=False)
     condition: Mapped[str] = mapped_column(String(255), nullable=False)
     separation_level: Mapped[str] = mapped_column("separationLevel", String(50), nullable=False)
     synced_from_offline: Mapped[bool] = mapped_column("syncedFromOffline", Boolean, default=False)
     device_recorded_at: Mapped[str | None] = mapped_column("deviceRecordedAt", String(50))
+    is_weight_estimated: Mapped[bool] = mapped_column("isWeightEstimated", Boolean, default=False)
 
     # FKs
     container_id: Mapped[uuid.UUID] = mapped_column(
