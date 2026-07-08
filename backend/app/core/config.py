@@ -41,8 +41,8 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
     # ── MinIO 
-    MINIO_ROOT_USER: str = "minio_admin"
-    MINIO_ROOT_PASSWORD: str = "minio_secret_2024"
+    MINIO_ROOT_USER: str = "minioadmin"
+    MINIO_ROOT_PASSWORD: str = "minioadmin"
     MINIO_BUCKET_INCIDENTS: str = "incident-photos"
 
     model_config = {"env_file": "../../.env", "extra": "ignore"}

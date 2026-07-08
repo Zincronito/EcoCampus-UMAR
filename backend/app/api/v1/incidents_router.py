@@ -17,6 +17,8 @@ from app.models.incident import Incident
 from app.models.container import Container
 from app.models.user import User
 from app.models.collection_record import CollectionRecord
+from fastapi import File, UploadFile
+from app.core.minio_client import upload_incident_photo
 
 router = APIRouter()
 
@@ -119,6 +121,35 @@ async def create_incident(
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Error al crear incidente: {str(e)}")
 
+@router.post("/upload-photo", status_code=200)
+async def upload_incident_photo_endpoint(
+    file: UploadFile = File(...)
+):
+    """
+    Sube una foto de incidencia a MinIO.
+    
+    Returns: URL pública de la foto
+    """
+    try:
+        # Validar que es imagen
+        if not file.content_type.startswith("image/"):
+            raise HTTPException(status_code=400, detail="El archivo debe ser una imagen")
+        
+        # Leer contenido
+        file_content = await file.read()
+        
+        # Generar nombre único
+        filename = f"incident_{uuid.uuid4()}.jpg"
+        
+        # Subir a MinIO
+        photo_url = await upload_incident_photo(file_content, filename)
+        
+        return {"photo_url": photo_url, "filename": filename}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al subir foto: {str(e)}")
 
 @router.get("", response_model=list[IncidentResponse])
 async def get_incidents(db: AsyncSession = Depends(get_db)):

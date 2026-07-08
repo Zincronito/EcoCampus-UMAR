@@ -4,6 +4,7 @@ FastAPI entry point para EcoCampus UMAR
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.minio_client import ensure_buckets_exist
 # Importar modelos para registrar las relaciones
 from app import models
 from app.core.config import settings
@@ -62,3 +63,9 @@ app.include_router(collectors_router.router, prefix="/api/v1/collectors", tags=[
 @app.get("/")
 async def root():
     return {"message": "EcoCampus UMAR API", "docs_url": "/docs"}
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Crear buckets de MinIO al iniciar"""
+    await ensure_buckets_exist()
