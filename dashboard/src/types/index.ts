@@ -51,7 +51,7 @@ export interface Container {
   id: string;
   container_code: string;
   tare_weight: number;
-  volume_liters: number | null;
+  volume_cubic_meters: number | null;
   status: string;
   qr_generated: boolean;
   is_active: boolean;

@@ -47,7 +47,7 @@ export default function NewContainerPage() {
   // Form state
   const [suggestedCode, setSuggestedCode] = useState<string>("");
   const [tareWeight, setTareWeight] = useState("");
-  const [volumeLiters, setVolumeLiters] = useState("");
+  const [volumeCubicMeters, setVolumeCubicMeters] = useState("");
   const [status, setStatus] = useState("active");
   const [categoryId, setCategoryId] = useState("");
   const [locationId, setLocationId] = useState("");
@@ -127,8 +127,8 @@ export default function NewContainerPage() {
     }
 
     let volumeNum: number | null = null;
-    if (volumeLiters.trim() !== "") {
-      volumeNum = parseFloat(volumeLiters.replace(",", "."));
+    if (volumeCubicMeters.trim() !== "") {
+      volumeNum = parseFloat(volumeCubicMeters.replace(",", "."));
       if (isNaN(volumeNum) || volumeNum < 0) {
         toast.error("El volumen debe ser un numero positivo");
         return;
@@ -141,7 +141,7 @@ export default function NewContainerPage() {
       // NO enviamos container_code: el backend lo autogenera
       const payload: any = {
         tare_weight: tareNum,
-        volume_liters: volumeNum,
+        volume_cubic_meters: volumeNum,
         status: status,
         waste_category_id: categoryId,
         location_id: locationId,
@@ -433,15 +433,15 @@ export default function NewContainerPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="volume_liters">Volumen (L)</Label>
+                    <Label htmlFor="volume_cubic_meters">Volumen (m³)</Label>
                     <div className="relative">
                       <Box className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <Input
-                        id="volume_liters"
+                        id="volume_cubic_meters"
                         type="text"
-                        placeholder="Ej. 120"
-                        value={volumeLiters}
-                        onChange={(e) => setVolumeLiters(e.target.value)}
+                        placeholder="Ej. 0.12"
+                        value={volumeCubicMeters}
+                        onChange={(e) => setVolumeCubicMeters(e.target.value)}
                         disabled={saving}
                         className="pl-10"
                       />
@@ -513,7 +513,7 @@ export default function NewContainerPage() {
                       <div className="flex items-center gap-1.5">
                         <Box className="w-3 h-3 text-gray-500" />
                         <span className="text-gray-500">Vol:</span>
-                        <span className="font-semibold">{volumeLiters || "—"} L</span>
+                        <span className="font-semibold">{volumeCubicMeters || "—"} m³</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Scale className="w-3 h-3 text-gray-500" />

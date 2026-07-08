@@ -403,7 +403,7 @@ export default function ContainersPage() {
                       <div>
                         <p className="text-xs text-gray-500">Volumen</p>
                         <p className="text-sm font-semibold">
-                          {container.volume_liters ? `${container.volume_liters} L` : "—"}
+                          {container.volume_cubic_meters ? `${container.volume_cubic_meters} m³` : "—"}
                         </p>
                       </div>
                     </div>

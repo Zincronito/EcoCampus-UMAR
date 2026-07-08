@@ -49,7 +49,7 @@ export default function EditContainerPage() {
   // Form state
   const [containerCode, setContainerCode] = useState("");
   const [tareWeight, setTareWeight] = useState("");
-  const [volumeLiters, setVolumeLiters] = useState("");
+  const [volumeCubicMeters, setVolumeCubicMeters] = useState("");
   const [status, setStatus] = useState("active");
   const [categoryId, setCategoryId] = useState("");
   const [locationId, setLocationId] = useState("");
@@ -74,8 +74,8 @@ export default function EditContainerPage() {
       setOriginalContainer(containerData);
       setContainerCode(containerData.container_code);
       setTareWeight(String(containerData.tare_weight));
-      setVolumeLiters(
-        containerData.volume_liters !== null ? String(containerData.volume_liters) : ""
+      setVolumeCubicMeters(
+        containerData.volume_cubic_meters !== null ? String(containerData.volume_cubic_meters) : ""
       );
       setStatus(containerData.status);
       setCategoryId(containerData.waste_category_id);
@@ -102,14 +102,14 @@ export default function EditContainerPage() {
     if (!originalContainer) return false;
 
     const originalVolume =
-      originalContainer.volume_liters !== null
-        ? String(originalContainer.volume_liters)
+      originalContainer.volume_cubic_meters !== null
+        ? String(originalContainer.volume_cubic_meters)
         : "";
 
     return (
       containerCode.trim() !== originalContainer.container_code ||
       tareWeight.trim() !== String(originalContainer.tare_weight) ||
-      volumeLiters.trim() !== originalVolume ||
+      volumeCubicMeters.trim() !== originalVolume ||
       status !== originalContainer.status ||
       categoryId !== originalContainer.waste_category_id ||
       locationId !== originalContainer.location_id
@@ -147,8 +147,8 @@ export default function EditContainerPage() {
     }
 
     let volumeNum: number | null = null;
-    if (volumeLiters.trim() !== "") {
-      volumeNum = parseFloat(volumeLiters.replace(",", "."));
+    if (volumeCubicMeters.trim() !== "") {
+      volumeNum = parseFloat(volumeCubicMeters.replace(",", "."));
       if (isNaN(volumeNum) || volumeNum < 0) {
         toast.error("El volumen debe ser un número positivo");
         return;
@@ -161,7 +161,7 @@ export default function EditContainerPage() {
       const payload: any = {
         container_code: containerCode.trim().toUpperCase(),
         tare_weight: tareNum,
-        volume_liters: volumeNum,
+        volume_cubic_meters: volumeNum,
         status: status,
         waste_category_id: categoryId,
         location_id: locationId,
@@ -447,15 +447,15 @@ export default function EditContainerPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="volume_liters">Volumen (L)</Label>
+                    <Label htmlFor="volume_cubic_meters">Volumen (m³)</Label>
                     <div className="relative">
                       <Box className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <Input
-                        id="volume_liters"
+                        id="volume_cubic_meters"
                         type="text"
                         placeholder="Ej. 120"
-                        value={volumeLiters}
-                        onChange={(e) => setVolumeLiters(e.target.value)}
+                        value={volumeCubicMeters}
+                        onChange={(e) => setVolumeCubicMeters(e.target.value)}
                         disabled={saving}
                         className="pl-10"
                       />
@@ -534,7 +534,7 @@ export default function EditContainerPage() {
                       <div className="flex items-center gap-1.5">
                         <Box className="w-3 h-3 text-gray-500" />
                         <span className="text-gray-500">Vol:</span>
-                        <span className="font-semibold">{volumeLiters || "—"} L</span>
+                        <span className="font-semibold">{volumeCubicMeters || "—"} m³</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Scale className="w-3 h-3 text-gray-500" />
