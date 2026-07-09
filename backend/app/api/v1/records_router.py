@@ -66,7 +66,6 @@ async def create_collection_record(
 ):
     """
     Crea un nuevo reporte de recoleccion.
-    
     Valida:
     - Que el contenedor exista
     - Que el recolector exista
@@ -74,14 +73,18 @@ async def create_collection_record(
     """
     try:
         # Validar que el contenedor existe
+        # Validar que el contenedor existe (cargar waste_category)
+        from sqlalchemy.orm import selectinload
+        
         container_result = await db.execute(
-            select(Container).where(Container.id == record.container_id)
+            select(Container)
+            .where(Container.id == record.container_id)
+            .options(selectinload(Container.waste_category))
         )
         container = container_result.scalar_one_or_none()
         if not container:
             raise HTTPException(status_code=404, detail="Contenedor no encontrado")
-        
-        # Validar que el peso bruto sea mayor que la tara
+       
         # Validar que el peso bruto sea mayor que la tara (solo si se proporciono peso)
         if record.gross_weight is not None:
             if record.gross_weight <= container.tare_weight:
@@ -89,7 +92,7 @@ async def create_collection_record(
                     status_code=400,
                     detail=f"El peso bruto ({record.gross_weight} kg) debe ser mayor que la tara del contenedor ({container.tare_weight} kg)"
                 )
-        
+       
         # Validar que el recolector existe
         collector_result = await db.execute(
             select(User).where(User.id == record.collector_id)
@@ -97,27 +100,50 @@ async def create_collection_record(
         collector = collector_result.scalar_one_or_none()
         if not collector:
             raise HTTPException(status_code=404, detail="Recolector no encontrado")
-        
-        # Crear el reporte
+       
+        # CALCULAR PESO APROXIMADO SI NO VIENE
+        net_weight = record.net_weight
+        is_weight_estimated = False
+       
+        if net_weight is None or net_weight == 0:
+            if container and container.waste_category:
+                volumen = container.volume_cubic_meters or 0
+                densidad = container.waste_category.density_kg_per_cubic_meter or 0
+               
+                if volumen > 0 and densidad > 0:
+                    fill_level_map = {
+                        "empty": 0,
+                        "quarter": 0.25,
+                        "half": 0.5,
+                        "three_quarter": 0.75,
+                        "full": 0.95,
+                        "overflow": 1.0,
+                    }
+                    fill_fraction = fill_level_map.get(record.fill_level, 0.5)
+                    net_weight = volumen * densidad * fill_fraction
+                    is_weight_estimated = True
+       
+        # Crear el reporte (UNA SOLA VEZ)
         new_record = CollectionRecord(
             gross_weight=record.gross_weight,
-            net_weight=record.net_weight,
+            net_weight=net_weight,
             fill_level=record.fill_level,
             physical_state=record.physical_state,
             condition=record.condition,
             separation_level=record.separation_level,
+            is_weight_estimated=is_weight_estimated,
             container_id=record.container_id,
             collector_id=record.collector_id,
             synced_from_offline=record.synced_from_offline,
             device_recorded_at=record.device_recorded_at,
         )
-        
+       
         db.add(new_record)
         await db.commit()
         await db.refresh(new_record)
-        
+       
         return new_record
-        
+       
     except HTTPException:
         raise
     except Exception as e:
@@ -187,6 +213,7 @@ async def get_collector_records(
                 "id": str(record.id),
                 "gross_weight": record.gross_weight,
                 "net_weight": record.net_weight,
+                "is_weight_estimated": record.is_weight_estimated,  
                 "fill_level": record.fill_level,
                 "physical_state": record.physical_state,
                 "condition": record.condition,
@@ -376,32 +403,6 @@ async def get_analytics(
         
         result = await db.execute(query)
         records = result.scalars().all()
-# ──────────────────────────────────────────────────────────────────────────
-        # CALCULAR PESO APROXIMADO PARA REGISTROS SIN PESO NETO
-        # ──────────────────────────────────────────────────────────────────────────
-        for record in records:
-            if record.net_weight is None or record.net_weight == 0:
-                # Intentar calcular peso aproximado
-                if record.container and record.container.waste_category:
-                    volumen = record.container.volume_cubic_meters or 0
-                    densidad = record.container.waste_category.density_kg_per_cubic_meter or 0
-                    
-                    if volumen > 0 and densidad > 0:
-                        # Mapeo de fill_level a fracción
-                        fill_level_map = {
-                            "empty": 0,
-                            "quarter": 0.25,
-                            "half": 0.5,
-                            "three_quarter": 0.75,
-                            "full": 0.95,
-                            "overflow": 1.0,
-                        }
-                        fill_fraction = fill_level_map.get(record.fill_level, 0.5)
-
-                        # peso_aproximado = volumen × densidad × fracción_llenado
-                        peso_aprox = volumen * densidad * fill_fraction
-                        record.net_weight = peso_aprox
-                        record.is_weight_estimated = True  # ← MARCAR COMO ESTIMADO
         
         # Aplicar filtros en Python (post-procesamiento)
         if campus_id:

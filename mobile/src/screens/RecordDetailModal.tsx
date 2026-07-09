@@ -30,17 +30,26 @@ export default function RecordDetailModal({
     const minutes = date.getMinutes().toString().padStart(2, "0");
     return `${day}/${month}/${year} - ${hours}:${minutes}`;
   };
+  console.log("RECORD COMPLETO:", JSON.stringify(record, null, 2));
+  console.log("NET_WEIGHT:", record.net_weight);
+  console.log("IS_WEIGHT_ESTIMATED:", record.is_weight_estimated);
 
   const getFillLevelLabel = (level: string) => {
-    const labels: { [key: string]: string } = {
-      "0": "Vacio",
-      "1": "<25%",
-      "2": "25-50%",
-      "3": "50-75%",
-      "4": ">75%",
-      "5": "Desbordado",
+    const levelMap: { [key: string]: string } = {
+      "empty": "0 (Vacío)",
+      "quarter": "1 (<25%)",
+      "half": "2 (50%)",
+      "three_quarter": "3 (75%)",
+      "full": "4 (>75%)",
+      "overflow": "5 (Desbordado)",
+      "0": "0 (Vacío)",
+      "1": "1 (<25%)",
+      "2": "2 (50%)",
+      "3": "3 (75%)",
+      "4": "4 (>75%)",
+      "5": "5 (Desbordado)",
     };
-    return labels[level] || level;
+    return levelMap[level] || level;
   };
 
   const getPhysicalStateLabel = (state: string) => {
@@ -150,15 +159,17 @@ export default function RecordDetailModal({
               </View>
               <View style={styles.row}>
                 <Text style={styles.label}>Peso neto:</Text>
-                <Text style={[
-                  styles.value,
-                  record.net_weight === null && styles.valueEmpty
-                ]}>
-                  {record.net_weight !== null
-                    ? `${record.net_weight.toFixed(1)} kg`
-                    : "No registrado"
-                  }
-                </Text>
+                <View style={styles.weightContainer}>
+                  <Text style={[
+                    styles.value,
+                    !record.net_weight && styles.valueEmpty
+                  ]}>
+                    {record.net_weight ? `${record.net_weight.toFixed(2)} kg` : "No registrado"}
+                  </Text>
+                  {record.is_weight_estimated && (
+                    <Text style={styles.badgeEstimated}>Estimado</Text>
+                  )}
+                </View>
               </View>
               <View style={styles.row}>
                 <Text style={styles.label}>Tara:</Text>
@@ -169,7 +180,7 @@ export default function RecordDetailModal({
               <View style={styles.row}>
                 <Text style={styles.label}>Nivel de llenado:</Text>
                 <Text style={styles.value}>
-                  {record.fill_level} ({getFillLevelLabel(record.fill_level)})
+                  {getFillLevelLabel(record.fill_level)}
                 </Text>
               </View>
             </View>
@@ -361,4 +372,20 @@ const styles = StyleSheet.create({
     color: "#9ca3af",
     fontStyle: "italic",
   },
+  weightContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    flex:1,
+  },
+  badgeEstimated: {
+    backgroundColor: '#fbbf24',
+    color: '#92400e',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    fontSize: 10,
+    fontWeight: '600',
+    marginLeft: 8,  // ← Cambiar gap por marginLeft
+  }
 });

@@ -362,9 +362,9 @@ export default function CollectionScreen({
               style={[
                 styles.fillBox,
                 { backgroundColor: "#10b981" },
-                fillLevel === "0" && styles.fillBoxSelected,
+                fillLevel === "empty" && styles.fillBoxSelected,  // ← CAMBIAR
               ]}
-              onPress={() => setFillLevel("0")}
+              onPress={() => setFillLevel("empty")}
             >
               <Text style={styles.fillNumber}>0</Text>
               <Text style={styles.fillLabel}>Vacio</Text>
@@ -373,9 +373,9 @@ export default function CollectionScreen({
               style={[
                 styles.fillBox,
                 { backgroundColor: "#84cc16" },
-                fillLevel === "1" && styles.fillBoxSelected,
+                fillLevel === "quarter" && styles.fillBoxSelected,  // ← CAMBIAR
               ]}
-              onPress={() => setFillLevel("1")}
+              onPress={() => setFillLevel("quarter")}
             >
               <Text style={styles.fillNumber}>1</Text>
               <Text style={styles.fillLabel}>{"<"}25%</Text>
@@ -384,9 +384,9 @@ export default function CollectionScreen({
               style={[
                 styles.fillBox,
                 { backgroundColor: "#eab308" },
-                fillLevel === "2" && styles.fillBoxSelected,
+                fillLevel === "half" && styles.fillBoxSelected,  // ← CAMBIAR
               ]}
-              onPress={() => setFillLevel("2")}
+              onPress={() => setFillLevel("half")}
             >
               <Text style={styles.fillNumber}>2</Text>
               <Text style={styles.fillLabel}>25-50%</Text>
@@ -395,9 +395,9 @@ export default function CollectionScreen({
               style={[
                 styles.fillBox,
                 { backgroundColor: "#f97316" },
-                fillLevel === "3" && styles.fillBoxSelected,
+                fillLevel === "three_quarter" && styles.fillBoxSelected,  // ← CAMBIAR
               ]}
-              onPress={() => setFillLevel("3")}
+              onPress={() => setFillLevel("three_quarter")}
             >
               <Text style={styles.fillNumber}>3</Text>
               <Text style={styles.fillLabel}>50-75%</Text>
@@ -406,9 +406,9 @@ export default function CollectionScreen({
               style={[
                 styles.fillBox,
                 { backgroundColor: "#ef4444" },
-                fillLevel === "4" && styles.fillBoxSelected,
+                fillLevel === "full" && styles.fillBoxSelected,  // ← CAMBIAR
               ]}
-              onPress={() => setFillLevel("4")}
+              onPress={() => setFillLevel("full")}
             >
               <Text style={styles.fillNumber}>4</Text>
               <Text style={styles.fillLabel}>{">"}75%</Text>
@@ -418,9 +418,9 @@ export default function CollectionScreen({
           <TouchableOpacity
             style={[
               styles.desbordadoBtn,
-              fillLevel === "5" && styles.desbordadoBtnSelected,
+              fillLevel === "overflow" && styles.desbordadoBtnSelected,  // ← CAMBIAR
             ]}
-            onPress={() => setFillLevel("5")}
+            onPress={() => setFillLevel("overflow")}
           >
             <AlertTriangle size={20} color="#fff" strokeWidth={2.5} style={{ marginRight: 8 }} />
             <Text style={styles.desbordadoText}>5 - Desbordado</Text>

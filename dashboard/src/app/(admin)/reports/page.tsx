@@ -203,16 +203,29 @@ export default function ReportsPage() {
   };
 
   const getFillLevelBadge = (level: string) => {
-    const levels: Record<string, string> = {
-      empty: "Vacío",
-      quarter: "25%",
-      half: "50%",
-      three_quarter: "75%",
-      full: ">75%",
-      overflow: "Desbordado",
-    };
-    return levels[level] || level;
+  // Mapeo de strings
+  const levelMap: Record<string, string> = {
+    "empty": "0% (Vacío)",
+    "quarter": "<25%",
+    "half": "50%",
+    "three_quarter": "75%",
+    "full": ">75%",
+    "overflow": "100% (Desbordado)",
   };
+  
+  // Mapeo de números antiguos
+  const numberMap: Record<string, string> = {
+    "0": "0% (Vacío)",
+    "1": "<25%",
+    "2": "50%",
+    "3": "75%",
+    "4": ">75%",
+    "5": "100% (Desbordado)",
+  };
+  
+  // Intentar primero con string, luego con número
+  return levelMap[level] || numberMap[level] || level;
+};
 
   return (
     <div className="space-y-6">

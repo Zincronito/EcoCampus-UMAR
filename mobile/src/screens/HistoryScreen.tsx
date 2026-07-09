@@ -103,15 +103,24 @@ export default function HistoryScreen({ onSwitchToScan, onLogout }: any) {
   };
 
   const getFillLevelLabel = (level: string) => {
-    const labels: { [key: string]: string } = {
-      "0": "Vacio",
-      "1": "<25%",
-      "2": "25-50%",
-      "3": "50-75%",
-      "4": ">75%",
-      "5": "Desbordado",
+    // Mapeo: string → número + descripción
+    const levelMap: { [key: string]: string } = {
+      "empty": "0 (Vacío)",
+      "quarter": "1 (<25%)",
+      "half": "2 (50%)",
+      "three_quarter": "3 (75%)",
+      "full": "4 (>75%)",
+      "overflow": "5 (Desbordado)",
+      // También soportar números antiguos si existen
+      "0": "0 (Vacío)",
+      "1": "1 (<25%)",
+      "2": "2 (50%)",
+      "3": "3 (75%)",
+      "4": "4 (>75%)",
+      "5": "5 (Desbordado)",
     };
-    return labels[level] || level;
+
+    return levelMap[level] || level;
   };
 
   // Filtrar registros
@@ -215,7 +224,7 @@ export default function HistoryScreen({ onSwitchToScan, onLogout }: any) {
                 <View style={styles.dataCol}>
                   <Text style={styles.dataLabel}>NIVEL DE LLENADO</Text>
                   <Text style={styles.dataValue}>
-                    {record.fill_level} ({getFillLevelLabel(record.fill_level)})
+                    {getFillLevelLabel(record.fill_level)}
                   </Text>
                 </View>
                 <View style={styles.dataDivider} />
