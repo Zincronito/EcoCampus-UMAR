@@ -369,7 +369,7 @@ export default function AnalyticsPage() {
           {/* Gráficas */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Gráfica 1: Tendencia temporal */}
-    
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">
@@ -387,7 +387,7 @@ export default function AnalyticsPage() {
                     <YAxis
                       label={{ value: "Peso (kg)", angle: -90, position: "insideLeft" }}
                     />
-                  <Tooltip />
+                    <Tooltip />
                     {/* <Legend /> */}
                     <Line
                       type="monotone"
@@ -438,6 +438,55 @@ export default function AnalyticsPage() {
             </Card>
 
             {/* Gráfica 3: Generación por sector */}
+            {/* Gráfica 3: Generación por Sector */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  Generación por Sector
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart
+                    data={analytics.generation.by_sector}
+                    layout="vertical"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" />
+                    <YAxis dataKey="sector" type="category" width={100} />
+                    <Tooltip />
+                    <Bar dataKey="weight" fill="#10b981" name="Peso (kg)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Gráfica 4: Distribución de Separación */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  Distribución de Separación
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart
+                    data={Object.entries(analytics.separation.by_level).map(
+                      ([level, data]: [string, any]) => ({
+                        level: data.name,
+                        count: data.count,
+                      })
+                    )}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="level" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#8b5cf6" name="Eventos" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
 
           </div>
         </>

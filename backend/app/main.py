@@ -58,6 +58,9 @@ app.include_router(locations_router.router, prefix="/api/v1/locations", tags=["l
 
 # Collectors
 app.include_router(collectors_router.router, prefix="/api/v1/collectors", tags=["collectors"])
+
+# incidents photos
+app.include_router(incidents_router.router, prefix="/api/v1/incidents", tags=["incidents"])
 # ────────────────────────────────────────────────────────────
 
 @app.get("/")

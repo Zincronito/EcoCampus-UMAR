@@ -335,3 +335,42 @@ export const incidentService = {
     }
   },
 };
+
+// UPLOAD A MINÍO
+// ────────────────────────────────────────────────────────────
+
+export const fileService = {
+  uploadIncidentPhoto: async (photoUri: string) => {
+    try {
+      console.log("Subiendo foto a MinIO...", photoUri);
+
+      // FORMA CORRECTA PARA REACT NATIVE
+      const formData = new FormData();
+      formData.append("file", {
+        uri: photoUri,
+        type: "image/jpeg",
+        name: "incident_photo.jpg",
+      } as any);
+
+      // POST a /incidents/upload-photo
+      const uploadResponse = await fetch(`${API_URL}/incidents/upload-photo`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        const error = await uploadResponse.json();
+        throw new Error(error.detail || "Error al subir foto");
+      }
+
+      const data = await uploadResponse.json();
+      console.log("Foto subida:", data.photo_url);
+      
+      return data.photo_url; // URL pública de MinIO
+
+    } catch (error: any) {
+      console.error("Error al subir foto:", error.message);
+      throw error;
+    }
+  },
+};

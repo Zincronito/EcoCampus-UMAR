@@ -24,7 +24,7 @@ import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from "expo-speech-recognition";
-import { incidentService, recordService, containerService } from "../services/authService";
+import { incidentService, recordService, containerService, fileService } from "../services/authService";
 
 interface IncidentReportModalProps {
   visible: boolean;
@@ -204,6 +204,21 @@ export default function IncidentReportModal({
     try {
       setSubmitting(true);
 
+      // PASO 1: Subir foto a MinIO si existe
+      let photoUrl: string | null = null;
+      if (photoUri) {
+        try {
+          console.log("Subiendo foto...");
+          photoUrl = await fileService.uploadIncidentPhoto(photoUri);
+          console.log("Foto subida:", photoUrl);
+        } catch (photoError: any) {
+          Alert.alert("Error", "No se pudo subir la foto: " + photoError.message);
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      // PASO 2: Crear registro de recolección
       const recordPayload = {
         gross_weight: formData.gross_weight > 0 ? formData.gross_weight : null,
         net_weight: formData.net_weight > 0 ? formData.net_weight : null,
@@ -215,16 +230,16 @@ export default function IncidentReportModal({
         collector_id: collectorId,
       };
 
-      // Obtener info del contenedor para la pantalla de exito
       const containerData = await containerService.getById(containerId);
       const categoryName = containerData?.waste_category?.name || "Sin categoria";
 
       const savedRecord = await recordService.create(recordPayload as any);
 
+      // PASO 3: Crear incidencia CON la URL de la foto
       const incidentPayload = {
         description: description.trim(),
         quick_tag: description,
-        photo_url: photoUri || null,
+        photo_url: photoUrl, // ← USAR URL DE MINÍO
         container_id: containerId,
         reported_by_id: collectorId,
         collection_record_id: savedRecord.id,
@@ -232,18 +247,19 @@ export default function IncidentReportModal({
 
       await incidentService.create(incidentPayload as any);
 
-      // Limpiar estado
+      // PASO 4: Limpiar y cerrar
       setDescription("");
       setPhotoUri(null);
       onClose();
 
-      // Navegar a pantalla de exito
+      // Navegar a pantalla de éxito
       onSubmitSuccess({
         container_code: containerCode,
         category_name: categoryName,
         weight: formData.net_weight,
-        weight_recorded: formData.gross_weight > 0,  // ← AGREGAR
+        weight_recorded: formData.gross_weight > 0,
         has_incident: true,
+        photo_url: photoUrl, // ← AGREGAR FOTO A RESPUESTA
         timestamp: new Date().toISOString(),
       });
     } catch (error: any) {
