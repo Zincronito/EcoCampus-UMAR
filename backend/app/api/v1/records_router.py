@@ -415,6 +415,23 @@ async def get_analytics(
             records = [r for r in records if r.container and r.container.waste_category_id == category_id]
         
         # Empty response
+        # NIVEL DE SEPARACIÓN PROMEDIO
+        if records:
+            separation_values = []
+            for record in records:
+                try:
+                    sep_level = int(record.separation_level)
+                    separation_values.append(sep_level)
+                except (ValueError, TypeError):
+                    pass
+            
+            if separation_values:
+                average_separation = sum(separation_values) / len(separation_values)
+                average_separation_rounded = round(average_separation)
+            else:
+                average_separation_rounded = 0
+        else:
+            average_separation_rounded = 0
         if not records:
             return {
                 "summary": {
@@ -422,6 +439,7 @@ async def get_analytics(
                     "average_generation_rate": 0,
                     "total_records": 0,
                     "correct_separation_percentage": 0,
+                    "average_separation_level": average_separation_rounded,
                 },
                 "generation": {
                     "by_category": [],
@@ -452,34 +470,31 @@ async def get_analytics(
         total_records = len(records)
         
         if total_records > 1:
-            time_diffs = []
             sorted_records = sorted(records, key=lambda x: x.created_at)
-            for i in range(1, len(sorted_records)):
-                delta = (sorted_records[i].created_at - sorted_records[i-1].created_at).days
-                if delta > 0:
-                    time_diffs.append(delta)
-            avg_delta_t = sum(time_diffs) / len(time_diffs) if time_diffs else 1
-            avg_generation_rate = total_weight / avg_delta_t if avg_delta_t > 0 else 0
+            fecha_min = sorted_records[0].created_at
+            fecha_max = sorted_records[-1].created_at
+            
+            # Período total en DÍAS CALENDARIO (no promedio de intervalos)
+            periodo_total_dias = (fecha_max - fecha_min).days + 1
+            
+            avg_generation_rate = total_weight / periodo_total_dias
         else:
-            avg_generation_rate = total_weight
+            avg_generation_rate = total_weight if total_weight > 0 else 0
         
         # Tasa por semana (lunes-viernes)
-        weekday_records = [r for r in records if r.created_at.weekday() < 5]
-        
-        if weekday_records:
-            weeks = set()
-            for record in weekday_records:
-                iso_year, iso_week, _ = record.created_at.isocalendar()
-                weeks.add((iso_year, iso_week))
-            
-            num_weeks = len(weeks) if weeks else 1
-            weekday_total = sum(r.net_weight or 0 for r in weekday_records)
-            weekly_generation_rate = weekday_total / num_weeks if num_weeks > 0 else 0
-        else:
-            weekly_generation_rate = 0
+        weekly_generation_rate = avg_generation_rate * 7
         
         correct_separation = sum(1 for r in records if r.separation_level in ["0", "1"])
         correct_separation_percentage = (correct_separation / total_records * 100) if total_records > 0 else 0
+        separation_levels = []
+        for r in records:
+            if r.separation_level and r.separation_level.isdigit():
+                separation_levels.append(int(r.separation_level))
+        
+        if separation_levels:
+            avg_separation_level = round(sum(separation_levels) / len(separation_levels))
+        else:
+            avg_separation_level = 0
         
         by_category = {}
         for record in records:
@@ -604,6 +619,7 @@ async def get_analytics(
                 "weekly_generation_rate": round(weekly_generation_rate, 2),
                 "total_records": total_records,
                 "correct_separation_percentage": round(correct_separation_percentage, 2),
+                "average_separation_level": avg_separation_level,
             },
             "generation": {
                 "by_category": category_data,

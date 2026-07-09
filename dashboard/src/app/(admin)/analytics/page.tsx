@@ -6,12 +6,12 @@ import {
   Loader2,
   TrendingUp,
   BarChart3,
+  Gauge,
   Target,
   AlertCircle,
   Filter,
   X,
 } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
 import {
   LineChart,
   Line,
@@ -35,14 +34,60 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
+  LabelList,
 } from "recharts";
-
-import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { campusAPI, locationsAPI, categoriesAPI } from "@/lib/api";
 import type { Campus, WasteCategory, Location } from "@/types";
+
+// Componente para el KPI de Separación Promedio
+const SeparationLevelCard = ({ level }: { level: number }) => {
+  const levelInfo = {
+    0: { text: "Excelente", bgColor: "bg-green-100", iconColor: "text-green-700" },
+    1: { text: "Aceptable", bgColor: "bg-green-100", iconColor: "text-green-700" },
+    2: { text: "Deficiente", bgColor: "bg-orange-100", iconColor: "text-orange-700" },
+    3: { text: "Crítico", bgColor: "bg-red-100", iconColor: "text-red-700" },
+  };
+
+  const info = levelInfo[level as keyof typeof levelInfo] || levelInfo[0];
+
+  return (
+    <Card className="shadow-sm">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-600 mb-2">
+              Nivel de Separación Promedio
+            </p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-3xl font-bold text-gray-900">
+                {level}
+              </p>
+            </div>
+            <p className="text-sm font-medium text-gray-500 mt-2">
+              {info.text}
+            </p>
+          </div>
+          <div className={`p-3 ${info.bgColor} rounded-lg`}>
+            <Gauge className={`w-6 h-6 ${info.iconColor}`} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Función helper para el semáforo de colores en la gráfica de Separación
+const getSeparationColor = (levelNumber: number) => {
+  const colorMap: { [key: number]: string } = {
+    0: "#10b981",      // Excelente - Verde
+    1: "#84cc16",      // Aceptable - Verde claro/Limón
+    2: "#f97316",      // Deficiente - Naranja
+    3: "#ef4444",      // Crítico - Rojo
+  };
+  return colorMap[levelNumber] || "#8b5cf6";
+};
 
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<any>(null);
@@ -51,7 +96,6 @@ export default function AnalyticsPage() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [categories, setCategories] = useState<WasteCategory[]>([]);
 
-  // Filtros
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [campusFilter, setCampusFilter] = useState<string>("all");
@@ -89,7 +133,6 @@ export default function AnalyticsPage() {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-
       if (dateFrom) params.append("date_from", dateFrom);
       if (dateTo) params.append("date_to", dateTo);
       if (campusFilter !== "all") params.append("campus_id", campusFilter);
@@ -119,7 +162,6 @@ export default function AnalyticsPage() {
     await loadData();
   };
 
-  // Sectores únicos
   const sectors = Array.from(
     new Set(locations.map((l) => l.sector).filter(Boolean))
   ) as string[];
@@ -144,8 +186,19 @@ export default function AnalyticsPage() {
     );
   }
 
+  // Pre-procesar datos de separación para la gráfica
+  const separationChartData = analytics?.separation?.by_level
+    ? Object.entries(analytics.separation.by_level).map(
+        ([level, data]: [string, any]) => ({
+          level: data.name,
+          count: data.count,
+          levelNumber: parseInt(level),
+        })
+      )
+    : [];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -159,9 +212,9 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Filtros */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Filter className="w-5 h-5" />
             Filtros
           </CardTitle>
@@ -178,7 +231,6 @@ export default function AnalyticsPage() {
                 onChange={(e) => setDateFrom(e.target.value)}
               />
             </div>
-
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">
                 Hasta
@@ -189,7 +241,6 @@ export default function AnalyticsPage() {
                 onChange={(e) => setDateTo(e.target.value)}
               />
             </div>
-
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">
                 Campus
@@ -208,7 +259,6 @@ export default function AnalyticsPage() {
                 </SelectContent>
               </Select>
             </div>
-
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">
                 Sector
@@ -227,7 +277,6 @@ export default function AnalyticsPage() {
                 </SelectContent>
               </Select>
             </div>
-
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">
                 Categoría
@@ -247,7 +296,6 @@ export default function AnalyticsPage() {
               </Select>
             </div>
           </div>
-
           <div className="flex gap-2 pt-2">
             <Button
               onClick={handleFilterApply}
@@ -264,21 +312,23 @@ export default function AnalyticsPage() {
         </CardContent>
       </Card>
 
-      {/* Tarjetas de Resumen */}
+      {/* KPI Cards */}
       {analytics && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Card className="shadow-sm">
+              <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">
+                    <p className="text-sm font-medium text-gray-600 mb-2">
                       Residuos Acumulados
                     </p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                      {analytics.summary.total_weight.toFixed(1)}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">kg</p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-3xl font-bold text-gray-900">
+                        {analytics.summary.total_weight.toFixed(1)}
+                      </p>
+                    </div>
+                    <p className="text-sm font-medium text-gray-500 mt-2">kg</p>
                   </div>
                   <div className="p-3 bg-blue-100 rounded-lg">
                     <BarChart3 className="w-6 h-6 text-blue-600" />
@@ -287,17 +337,19 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="pt-6">
+            <Card className="shadow-sm">
+              <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">
+                    <p className="text-sm font-medium text-gray-600 mb-2">
                       Tasa Promedio
                     </p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                      {analytics.summary.average_generation_rate.toFixed(2)}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">kg/día</p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-3xl font-bold text-gray-900">
+                        {analytics.summary.average_generation_rate.toFixed(2)}
+                      </p>
+                    </div>
+                    <p className="text-sm font-medium text-gray-500 mt-2">kg/día</p>
                   </div>
                   <div className="p-3 bg-green-100 rounded-lg">
                     <TrendingUp className="w-6 h-6 text-green-600" />
@@ -305,18 +357,20 @@ export default function AnalyticsPage() {
                 </div>
               </CardContent>
             </Card>
-            {/* Tarjeta 5: Tasa Semanal */}
-            <Card>
-              <CardContent className="pt-6">
+
+            <Card className="shadow-sm">
+              <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      Tasa Semanal (L-V)
+                    <p className="text-sm font-medium text-gray-600 mb-2">
+                      Tasa Semanal
                     </p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                      {analytics.summary.weekly_generation_rate.toFixed(2)}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">kg/semana</p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-3xl font-bold text-gray-900">
+                        {analytics.summary.weekly_generation_rate.toFixed(2)}
+                      </p>
+                    </div>
+                    <p className="text-sm font-medium text-gray-500 mt-2">kg/semana</p>
                   </div>
                   <div className="p-3 bg-cyan-100 rounded-lg">
                     <TrendingUp className="w-6 h-6 text-cyan-600" />
@@ -325,17 +379,19 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="pt-6">
+            <Card className="shadow-sm">
+              <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">
+                    <p className="text-sm font-medium text-gray-600 mb-2">
                       Total de Registros
                     </p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                      {analytics.summary.total_records}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">eventos</p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-3xl font-bold text-gray-900">
+                        {analytics.summary.total_records}
+                      </p>
+                    </div>
+                    <p className="text-sm font-medium text-gray-500 mt-2">eventos</p>
                   </div>
                   <div className="p-3 bg-purple-100 rounded-lg">
                     <Target className="w-6 h-6 text-purple-600" />
@@ -344,19 +400,19 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="pt-6">
+            <Card className="shadow-sm">
+              <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">
+                    <p className="text-sm font-medium text-gray-600 mb-2">
                       Separación Correcta
                     </p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                      {analytics.summary.correct_separation_percentage.toFixed(
-                        1
-                      )}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">%</p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-3xl font-bold text-gray-900">
+                        {analytics.summary.correct_separation_percentage.toFixed(1)}
+                      </p>
+                    </div>
+                    <p className="text-sm font-medium text-gray-500 mt-2">%</p>
                   </div>
                   <div className="p-3 bg-amber-100 rounded-lg">
                     <AlertCircle className="w-6 h-6 text-amber-600" />
@@ -364,52 +420,65 @@ export default function AnalyticsPage() {
                 </div>
               </CardContent>
             </Card>
+
+            <SeparationLevelCard
+              level={analytics.summary.average_separation_level}
+            />
           </div>
 
           {/* Gráficas */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Gráfica 1: Tendencia temporal */}
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
+            {/* Gráfica 1: Tendencia */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-semibold text-gray-800">
                   Tendencia de Generación
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={analytics.generation.temporal}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="date"
-                      label={{ value: "Fecha", position: "insideBottom", offset: -5 }}
+                <ResponsiveContainer width="100%" height={320}>
+                  {/* Margen bottom incrementado para que quepa "Fecha" */}
+                  <LineChart data={analytics.generation.temporal} margin={{ left: 10, right: 30, top: 20, bottom: 30 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fill: '#6b7280' }} 
+                      tickLine={false} 
+                      axisLine={false} 
+                      label={{ value: "Fecha", position: "insideBottom", offset: -20, fill: '#6b7280' }}
                     />
-                    <YAxis
-                      label={{ value: "Peso (kg)", angle: -90, position: "insideLeft" }}
+                    <YAxis 
+                      label={{ value: "Generación Diaria (kg)", angle: -90, position: "insideLeft", offset: 10, style: { textAnchor: 'middle', fill: '#6b7280' } }} 
+                      tick={{ fill: '#6b7280' }} 
+                      tickLine={false} 
+                      axisLine={false}
                     />
-                    <Tooltip />
-                    {/* <Legend /> */}
+                    <Tooltip 
+                      formatter={(value: any) => [`${value} kg`, 'Peso']}
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    />
                     <Line
                       type="monotone"
                       dataKey="weight"
                       stroke="#3b82f6"
-                      dot={{ fill: "#3b82f6", r: 5 }}
-                      name="Peso (kg)"
+                      strokeWidth={3}
+                      dot={{ fill: "#3b82f6", strokeWidth: 2, r: 4, stroke: "#fff" }}
+                      activeDot={{ r: 6, strokeWidth: 0 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Gráfica 2: Distribución por categoría */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">
+            {/* Gráfica 2: Distribución por Categoría */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-semibold text-gray-800">
                   Distribución por Categoría
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={320}>
                   <PieChart>
                     <Pie
                       data={analytics.generation.by_category}
@@ -417,77 +486,117 @@ export default function AnalyticsPage() {
                       nameKey="name"
                       cx="50%"
                       cy="50%"
-                      outerRadius={100}
+                      outerRadius={105}
+                      // Se quitó el innerRadius para que vuelva a ser pastel
                       label={(entry: any) =>
                         `${entry.name}: ${entry.percentage}%`
                       }
+                      labelLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
                     >
                       {analytics.generation.by_category.map(
                         (entry: any, index: number) => (
                           <Cell
                             key={`cell-${index}`}
                             fill={entry.color || COLORS[index % COLORS.length]}
+                            stroke="#fff"
+                            strokeWidth={2}
                           />
                         )
                       )}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip 
+                      formatter={(value: any) => [`${value} kg`, 'Peso']}
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Gráfica 3: Generación por sector */}
             {/* Gráfica 3: Generación por Sector */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">
+            <Card className="shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-semibold text-gray-800">
                   Generación por Sector
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={320}>
+                  {/* Margen bottom incrementado para que quepa "(kg)" centrado */}
                   <BarChart
                     data={analytics.generation.by_sector}
                     layout="vertical"
+                    margin={{ left: 20, right: 60, top: 20, bottom: 30 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="sector" type="category" width={100} />
-                    <Tooltip />
-                    <Bar dataKey="weight" fill="#10b981" name="Peso (kg)" />
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
+                    <XAxis 
+                      type="number" 
+                      label={{ value: "(kg)", position: "insideBottom", offset: -20, fill: '#6b7280' }} 
+                      tick={{ fill: '#6b7280' }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      dataKey="sector" 
+                      type="category" 
+                      width={100} 
+                      tick={{ fill: '#4b5563', fontWeight: 500 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip 
+                      formatter={(value: any) => [`${value} kg`, 'Peso']}
+                      cursor={{ fill: '#f3f4f6' }}
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    />
+                    <Bar dataKey="weight" fill="#10b981" radius={[0, 4, 4, 0]} barSize={36}>
+                      <LabelList dataKey="weight" position="right" style={{ fill: '#4b5563', fontSize: 13, fontWeight: 600 }} />
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
             {/* Gráfica 4: Distribución de Separación */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">
+            <Card className="shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-semibold text-gray-800">
                   Distribución de Separación
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={320}>
                   <BarChart
-                    data={Object.entries(analytics.separation.by_level).map(
-                      ([level, data]: [string, any]) => ({
-                        level: data.name,
-                        count: data.count,
-                      })
-                    )}
+                    data={separationChartData}
+                    margin={{ left: 10, right: 20, top: 20, bottom: 20 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="level" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#8b5cf6" name="Eventos" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                    <XAxis 
+                      dataKey="level" 
+                      tick={{ fill: '#4b5563', fontWeight: 500 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      label={{ value: "Número de registros", angle: -90, position: "insideLeft", offset: 15, style: { textAnchor: 'middle', fill: '#6b7280' } }} 
+                      tick={{ fill: '#6b7280' }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip 
+                      formatter={(value: any) => [value, 'Registros']}
+                      cursor={{ fill: '#f3f4f6' }}
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]} barSize={44}>
+                      {separationChartData.map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={getSeparationColor(entry.levelNumber)} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-
           </div>
         </>
       )}

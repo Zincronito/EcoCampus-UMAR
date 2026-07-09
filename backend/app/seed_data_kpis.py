@@ -1,323 +1,93 @@
 """
-Script para insertar datos realistas y controlados para testing de KPIs.
-
-Datos diseñados para verificar cálculos de:
-- Tasa promedio (kg/día)
-- Tasa semanal (kg/semana, solo L-V)
-- Separación correcta
-- Distribución por categoría/sector/campus
-
-Uso:
-    docker-compose --env-file .env.docker exec backend python -m app.seed_data_kpis
+Script para insertar 15 registros de demo
+Con valores variados para validar cálculos de KPIs
 """
-import asyncio
-from datetime import datetime, timedelta
-from sqlalchemy import select
-from app.core.database import AsyncSessionLocal
-from app.models.user import User
-from app.models.campus import Campus
-from app.models.location import Location
-from app.models.container import Container
-from app.models.waste_category import WasteCategory
-from app.models.collection_record import CollectionRecord
-from app.models.incident import Incident
 import uuid
+from datetime import datetime, timedelta
+from sqlalchemy import text
+from app.core.database import SessionLocal
 
-
-async def seed_kpis():
-    async with AsyncSessionLocal() as db:
-        print("=" * 80)
-        print("INSERTANDO DATOS REALISTAS PARA TESTING DE KPIs")
-        print("=" * 80)
-
-        try:
-            # ──────────────────────────────────────────────────────────────────────────
-            # 1. OBTENER DATOS EXISTENTES (Campus, Categorías, etc)
-            # ──────────────────────────────────────────────────────────────────────────
-
-            # Obtener campuses
-            result = await db.execute(select(Campus).limit(3))
-            campuses = result.scalars().all()
+def insert_demo_records():
+    db = SessionLocal()
+    
+    try:
+        print("🧹 Limpiando registros anteriores...")
+        db.execute(text("DELETE FROM collection_records"))
+        db.commit()
+        
+        print("📊 Insertando 15 registros nuevos...")
+        
+        # Datos variados
+        base_date = datetime(2026, 7, 1)
+        
+        records = [
+            # Semana 1
+            (100, 95, 'half', 'buen_estado', 'tapado', '0', 0, 'CONT-HUA-002', 'REC-HUA-001'),
+            (None, None, 'three_quarter', 'buen_estado', 'destapado', '1', 1, 'CONT-PA-001', 'REC-PA-001'),
+            (150, 145, 'full', 'buen_estado', 'tapado', '0', 2, 'CONT-PE-001', 'REC-HUA-002'),
+            (80, 75, 'quarter', 'tapa_rota', 'tapado,huele_mal', '2', 3, 'CONT-HUA-002', 'REC-HUA-001'),
+            (None, None, 'empty', 'buen_estado', 'destapado', '1', 4, 'CONT-PA-002', 'REC-PA-001'),
             
-            if not campuses:
-                print("❌ No hay campuses en la BD. Crea algunos primero.")
-                return
-
-            # Obtener categorías
-            result = await db.execute(select(WasteCategory).limit(4))
-            categories = result.scalars().all()
+            # Semana 2
+            (120, 115, 'half', 'buen_estado', 'tapado', '0', 7, 'CONT-PE-002', 'REC-HUA-002'),
+            (140, 135, 'three_quarter', 'buen_estado', 'tapado', '1', 8, 'CONT-HUA-002', 'REC-HUA-001'),
+            (None, None, 'full', 'contenedor_roto', 'desbordado', '3', 9, 'CONT-PA-001', 'REC-PA-001'),
+            (90, 85, 'half', 'buen_estado', 'tapado', '0', 10, 'CONT-PE-001', 'REC-HUA-002'),
+            (None, None, 'quarter', 'buen_estado', 'destapado,fauna', '2', 11, 'CONT-HUA-002', 'REC-HUA-001'),
             
-            if not categories:
-                print("❌ No hay categorías en la BD. Crea algunas primero.")
-                return
-
-            # Obtener recolectores
-            result = await db.execute(select(User).where(User.role == "collector").limit(2))
-            collectors = result.scalars().all()
-            
-            if not collectors:
-                print("❌ No hay recolectores en la BD. Crea algunos primero.")
-                return
-
-            # Obtener ubicaciones
-            result = await db.execute(select(Location).limit(6))
-            locations = result.scalars().all()
-            
-            if not locations:
-                print("❌ No hay ubicaciones en la BD. Crea algunas primero.")
-                return
-
-            # Obtener contenedores
-            result = await db.execute(select(Container).limit(4))
-            containers = result.scalars().all()
-            
-            if not containers:
-                print("❌ No hay contenedores en la BD. Crea algunos primero.")
-                return
-
-            print(f"✓ Datos base encontrados:")
-            print(f"  - {len(campuses)} campus")
-            print(f"  - {len(categories)} categorías")
-            print(f"  - {len(collectors)} recolectores")
-            print(f"  - {len(containers)} contenedores")
-
-            # ──────────────────────────────────────────────────────────────────────────
-            # 2. CREAR REGISTROS DE RECOLECCIÓN CON DATOS REALISTAS
-            # ──────────────────────────────────────────────────────────────────────────
-
-            # Fecha base: lunes 1 de julio 2026
-            base_date = datetime(2026, 7, 1, 8, 0, 0)
-
-            records_data = [
-                # LUNES 1 - semana 27
-                {
-                    "date": base_date,  # Lunes 1 de julio
-                    "container": containers[0],
-                    "collector": collectors[0],
-                    "gross_weight": 150.0,
-                    "tare_weight": containers[0].tare_weight,
-                    "fill_level": "three_quarter",
-                    "separation_level": "0",  # Excelente
-                    "is_estimated": False,
-                },
+            # Semana 3
+            (160, 155, 'full', 'buen_estado', 'tapado', '0', 14, 'CONT-PA-002', 'REC-PA-001'),
+            (110, 105, 'half', 'buen_estado', 'tapado', '1', 15, 'CONT-PE-002', 'REC-HUA-002'),
+            (None, None, 'three_quarter', 'tapa_rota', 'huele_mal', '2', 16, 'CONT-HUA-002', 'REC-HUA-001'),
+            (130, 125, 'full', 'buen_estado', 'tapado', '0', 17, 'CONT-PA-001', 'REC-PA-001'),
+            (None, None, 'quarter', 'buen_estado', 'destapado', '1', 18, 'CONT-PE-001', 'REC-HUA-002'),
+        ]
+        
+        inserted = 0
+        failed = 0
+        
+        for gross_w, net_w, fill, phys, cond, sep, days_offset, cont_code, collector_code in records:
+            try:
+                record_id = str(uuid.uuid4())
+                created_at = (base_date + timedelta(days=days_offset)).isoformat()
                 
-                # MARTES 2 - +1 día
-                {
-                    "date": base_date + timedelta(days=1),
-                    "container": containers[1],
-                    "collector": collectors[1],
-                    "gross_weight": 120.0,
-                    "tare_weight": containers[1].tare_weight,
-                    "fill_level": "half",
-                    "separation_level": "1",  # Aceptable
-                    "is_estimated": False,
-                },
+                # Obtener IDs reales
+                cont_result = db.execute(text(f"SELECT id FROM containers WHERE \"containerCode\" = '{cont_code}'"))
+                container_id = cont_result.scalar()
                 
-                # MIÉRCOLES 3 - +1 día
-                {
-                    "date": base_date + timedelta(days=2),
-                    "container": containers[2],
-                    "collector": collectors[0],
-                    "gross_weight": 95.0,
-                    "tare_weight": containers[2].tare_weight,
-                    "fill_level": "quarter",
-                    "separation_level": "2",  # Deficiente
-                    "is_estimated": False,
-                },
+                user_result = db.execute(text(f"SELECT id FROM users WHERE \"employeeId\" = '{collector_code}'"))
+                collector_id = user_result.scalar()
                 
-                # JUEVES 4 - +1 día
-                {
-                    "date": base_date + timedelta(days=3),
-                    "container": containers[3],
-                    "collector": collectors[1],
-                    "gross_weight": None,  # SIN PESO - SERÁ ESTIMADO
-                    "tare_weight": None,
-                    "fill_level": "half",
-                    "separation_level": "0",
-                    "is_estimated": True,
-                },
+                if not container_id or not collector_id:
+                    print(f"  ⚠️  Omitido: {cont_code}/{collector_code} (IDs no encontrados)")
+                    failed += 1
+                    continue
                 
-                # VIERNES 5 - +1 día
-                {
-                    "date": base_date + timedelta(days=4),
-                    "container": containers[0],
-                    "collector": collectors[1],
-                    "gross_weight": 140.0,
-                    "tare_weight": containers[0].tare_weight,
-                    "fill_level": "three_quarter",
-                    "separation_level": "1",
-                    "is_estimated": False,
-                },
+                is_estimated = 1 if (net_w is None or net_w == 0) else 0
                 
-                # SÁBADO 6 - FIN DE SEMANA - +1 día (no contar en tasa semanal)
-                {
-                    "date": base_date + timedelta(days=5),
-                    "container": containers[1],
-                    "collector": collectors[0],
-                    "gross_weight": 80.0,
-                    "tare_weight": containers[1].tare_weight,
-                    "fill_level": "quarter",
-                    "separation_level": "2",
-                    "is_estimated": False,
-                },
+                db.execute(text(f"""
+                    INSERT INTO collection_records 
+                    (id, "grossWeight", "netWeight", "fillLevel", "physicalState", condition, "separationLevel", "createdAt", container_id, collector_id, "isWeightEstimated")
+                    VALUES
+                    ('{record_id}', {gross_w}, {net_w}, '{fill}', '{phys}', '{cond}', '{sep}', '{created_at}', '{container_id}', '{collector_id}', {is_estimated})
+                """))
+                inserted += 1
                 
-                # DOMINGO 7 - FIN DE SEMANA - +1 día (no contar en tasa semanal)
-                {
-                    "date": base_date + timedelta(days=6),
-                    "container": containers[2],
-                    "collector": collectors[1],
-                    "gross_weight": None,
-                    "tare_weight": None,
-                    "fill_level": "full",
-                    "separation_level": "3",  # Crítico
-                    "is_estimated": True,
-                },
-
-                # LUNES 8 - semana 28 - +1 día
-                {
-                    "date": base_date + timedelta(days=7),
-                    "container": containers[3],
-                    "collector": collectors[0],
-                    "gross_weight": 135.0,
-                    "tare_weight": containers[3].tare_weight,
-                    "fill_level": "three_quarter",
-                    "separation_level": "0",
-                    "is_estimated": False,
-                },
-
-                # MARTES 9 - +1 día
-                {
-                    "date": base_date + timedelta(days=8),
-                    "container": containers[0],
-                    "collector": collectors[1],
-                    "gross_weight": None,
-                    "tare_weight": None,
-                    "fill_level": "half",
-                    "separation_level": "1",
-                    "is_estimated": True,
-                },
-
-                # MIÉRCOLES 10 - +1 día
-                {
-                    "date": base_date + timedelta(days=9),
-                    "container": containers[1],
-                    "collector": collectors[0],
-                    "gross_weight": 105.0,
-                    "tare_weight": containers[1].tare_weight,
-                    "fill_level": "quarter",
-                    "separation_level": "2",
-                    "is_estimated": False,
-                },
-
-                # JUEVES 11 - +1 día
-                {
-                    "date": base_date + timedelta(days=10),
-                    "container": containers[2],
-                    "collector": collectors[1],
-                    "gross_weight": 125.0,
-                    "tare_weight": containers[2].tare_weight,
-                    "fill_level": "three_quarter",
-                    "separation_level": "0",
-                    "is_estimated": False,
-                },
-            ]
-
-            # ──────────────────────────────────────────────────────────────────────────
-            # 3. INSERTAR REGISTROS
-            # ──────────────────────────────────────────────────────────────────────────
-
-            print("\n📝 Insertando registros de recolección:")
-            
-            for idx, data in enumerate(records_data, 1):
-                container = data["container"]
-                
-                # Calcular peso neto
-                if data["gross_weight"] is not None:
-                    net_weight = data["gross_weight"] - data["tare_weight"]
-                    is_estimated = False
-                else:
-                    # Calcular aproximado
-                    fill_map = {
-                        "empty": 0,
-                        "quarter": 0.25,
-                        "half": 0.5,
-                        "three_quarter": 0.75,
-                        "full": 0.95,
-                        "overflow": 1.0,
-                    }
-                    fill_fraction = fill_map.get(data["fill_level"], 0.5)
-                    volume = container.volume_cubic_meters or 0
-                    density = container.waste_category.density_kg_per_cubic_meter or 0
-                    net_weight = volume * density * fill_fraction
-                    is_estimated = True
-
-                record = CollectionRecord(
-                    id=str(uuid.uuid4()),
-                    gross_weight=data["gross_weight"],
-                    net_weight=round(net_weight, 2),
-                    fill_level=data["fill_level"],
-                    physical_state="normal",
-                    condition="good",
-                    separation_level=data["separation_level"],
-                    synced_from_offline=False,
-                    device_recorded_at=data["date"].isoformat(),
-                    is_weight_estimated=is_estimated,
-                    created_at=data["date"],
-                    container_id=container.id,
-                    collector_id=data["collector"].id,
-                )
-                
-                db.add(record)
-                print(f"  {idx}. {data['date'].strftime('%a %d/%m %H:%M')} | "
-                      f"{container.container_code} | "
-                      f"{net_weight:.1f} kg {'(est)' if is_estimated else '(real)'}")
-
-            await db.commit()
-
-            # ──────────────────────────────────────────────────────────────────────────
-            # 4. RESUMEN Y CÁLCULOS ESPERADOS
-            # ──────────────────────────────────────────────────────────────────────────
-
-            print("\n" + "=" * 80)
-            print("✅ DATOS INSERTADOS EXITOSAMENTE")
-            print("=" * 80)
-
-            # Verificar totales
-            result = await db.execute(select(CollectionRecord))
-            all_records = result.scalars().all()
-            
-            total_weight = sum(r.net_weight or 0 for r in all_records)
-            total_records = len(all_records)
-            
-            # Filtrar solo L-V
-            weekday_records = [r for r in all_records if r.created_at.weekday() < 5]
-            weekday_weight = sum(r.net_weight or 0 for r in weekday_records)
-            
-            print(f"\n📊 VERIFICACIÓN DE DATOS:")
-            print(f"  Total registros: {total_records}")
-            print(f"  Registros hábiles (L-V): {len(weekday_records)}")
-            print(f"  Peso total: {total_weight:.2f} kg")
-            print(f"  Peso hábiles: {weekday_weight:.2f} kg")
-            
-            print(f"\n🧮 CÁLCULOS ESPERADOS:")
-            print(f"  Período: 9 días (1-10 de julio)")
-            print(f"  Δt promedio: ~1.3 días entre eventos")
-            print(f"  Tasa promedio esperada: ~{total_weight / 1.3:.2f} kg/día")
-            print(f"  Tasa semanal esperada: ~{weekday_weight / 1.8:.2f} kg/semana")
-            print(f"  (Semanas hábiles únicas: 2)")
-            
-            # Separación correcta
-            correct = sum(1 for r in all_records if r.separation_level in ["0", "1"])
-            pct_correct = (correct / total_records * 100) if total_records > 0 else 0
-            print(f"  Separación correcta esperada: {pct_correct:.1f}%")
-            
-            print("\n" + "=" * 80)
-
-        except Exception as e:
-            print(f"\n❌ Error: {str(e)}")
-            await db.rollback()
-            raise
-
+            except Exception as e:
+                print(f"  ❌ Error en registro: {str(e)}")
+                failed += 1
+                continue
+        
+        db.commit()
+        print(f"\n✅ {inserted} REGISTROS INSERTADOS")
+        print(f"⚠️  {failed} REGISTROS FALLARON")
+        
+    except Exception as e:
+        db.rollback()
+        print(f"❌ Error: {str(e)}")
+        raise
+    finally:
+        db.close()
 
 if __name__ == "__main__":
-    asyncio.run(seed_kpis())
+    insert_demo_records()
