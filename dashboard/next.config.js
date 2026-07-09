@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  allowedDevOrigins: ["192.168.1.89"],
-};
+  basePath: '/residuos',  // ← AGREGAR ESTO
+  assetPrefix: '/residuos',  // ← Y ESTO
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig
