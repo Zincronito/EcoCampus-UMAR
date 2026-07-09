@@ -176,7 +176,7 @@ export default function ContainerLabel({
                 Volumen
               </p>
               <p className="m-0 text-sm text-gray-900 font-black tracking-tight">
-                {container.volume_liters} L
+                {container.volume_cubic_meters} m³
               </p>
             </div>
           </div>
