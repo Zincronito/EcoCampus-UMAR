@@ -321,6 +321,7 @@ async def get_reports(
                     "description": record.incident.description,
                     "quick_tag": record.incident.quick_tag,
                     "status": record.incident.status,
+                    "photo_url": record.incident.photo_url,
                 } if record.incident else None,
                 "collector": {
                     "id": str(record.collector.id),

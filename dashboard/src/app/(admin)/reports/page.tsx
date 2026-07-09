@@ -72,6 +72,7 @@ interface Report {
     description: string;
     quick_tag: string;
     status: string;
+    photo_url: string | null;
   } | null;
   collector: {
     id: string;
@@ -676,6 +677,26 @@ export default function ReportsPage() {
                         {selectedReport.incident.status}
                       </p>
                     </div>
+                    {selectedReport.incident.photo_url && (
+                      <div className="mt-4">
+                        <p className="text-sm font-medium text-red-700 mb-2">
+                          Foto de Incidencia
+                        </p>
+                        <img
+                          src={selectedReport.incident.photo_url}
+                          alt="Foto incidencia"
+                          className="w-full h-64 object-cover rounded-lg border border-gray-200"
+                        />
+                        <a
+                          href={selectedReport.incident.photo_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline mt-2 block"
+                        >
+                          Descargar foto
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

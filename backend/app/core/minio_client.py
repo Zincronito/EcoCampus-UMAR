@@ -59,8 +59,8 @@ async def upload_incident_photo(file_data: bytes, filename: str) -> str:
             content_type="image/jpeg"
         )
         
-        # Devolver URL (MinIO en localhost)
-        url = f"http://{MINIO_ENDPOINT}/{MINIO_BUCKET_INCIDENTS}/{filename}"
+        # Usar IP en lugar de "minio" para que el navegador pueda acceder
+        url = f"http://192.168.1.74:9000/{MINIO_BUCKET_INCIDENTS}/{filename}"
         return url
         
     except S3Error as e:
