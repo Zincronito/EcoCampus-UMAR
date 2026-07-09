@@ -70,5 +70,12 @@ async def root():
 
 @app.on_event("startup")
 async def startup_event():
-    """Crear buckets de MinIO al iniciar"""
+    """Crear tablas y buckets al iniciar"""
+    from app.core.database import engine, Base
+    
+    # Crear todas las tablas
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    
+    # Crear buckets de MinIO
     await ensure_buckets_exist()
