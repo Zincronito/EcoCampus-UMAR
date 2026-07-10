@@ -21,6 +21,7 @@ origins = [
     "http://localhost:3050",
     "http://127.0.0.1:3050",
     "https://horario.utm.mx",
+    "http://192.100.170.151:3050"
 ]
 # CORS middleware
 app.add_middleware(
