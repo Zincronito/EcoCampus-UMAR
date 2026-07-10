@@ -17,10 +17,15 @@ app = FastAPI(
     debug=settings.API_DEBUG,
 )
 
+origins = [
+    "http://localhost:3050",
+    "http://127.0.0.1:3050",
+    "https://horario.utm.mx",
+]
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

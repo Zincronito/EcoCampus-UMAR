@@ -295,10 +295,16 @@ async def get_reports(
         
         if has_incident is not None:
             from app.models.incident import Incident
+            from sqlalchemy import exists
+    
             if has_incident:
-                query = query.where(CollectionRecord.incident.isnot(None))
+                query = query.where(
+                    exists().where(Incident.collection_record_id == CollectionRecord.id)
+                )
             else:
-                query = query.where(CollectionRecord.incident.is_(None))
+                query = query.where(
+                    ~exists().where(Incident.collection_record_id == CollectionRecord.id)
+        )
         
         # Cargar relaciones
         query = query.options(
