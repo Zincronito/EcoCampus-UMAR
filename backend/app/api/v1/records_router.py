@@ -167,7 +167,7 @@ async def create_collection_record(
                     "severity": "critical"
                 })
             
-            if any("olor" in c for c in conditions):
+            if any("huele_mal" in c for c in conditions):  # ← Cambiar "olor" por "huele_mal"
                 notifications_to_create.append({
                     "title": "Mal Olor",
                     "message": f"Contenedor con mal olor detectado",
@@ -462,15 +462,6 @@ async def get_analytics(
         # Query base simple
         query = select(CollectionRecord)
         
-        # Filtros de fecha solamente
-        if date_from:
-            date_from_obj = datetime.fromisoformat(date_from)
-            query = query.where(CollectionRecord.created_at >= date_from_obj)
-        
-        if date_to:
-            date_to_obj = datetime.fromisoformat(date_to)
-            query = query.where(CollectionRecord.created_at <= date_to_obj)
-        
         # Cargar relaciones
         query = query.options(
             selectinload(CollectionRecord.container)
@@ -684,14 +675,19 @@ async def get_analytics(
                 for cond in conditions:
                     conditions_count[cond] = conditions_count.get(cond, 0) + 1
 
+        uncovered_count = sum(conditions_count.get(c, 0) for c in conditions_count.keys() if "destapado" in c)
+        fauna_count = sum(conditions_count.get(c, 0) for c in conditions_count.keys() if "fauna" in c)
+        odor_count = sum(conditions_count.get(c, 0) for c in conditions_count.keys() if "olor" in c or "huele" in c)
+        overflow_count = sum(conditions_count.get(c, 0) for c in conditions_count.keys() if "desbordad" in c)
+
         incident_data = {
-            "uncovered": conditions_count.get("destapado", 0),
-            "fauna": conditions_count.get("fauna", 0) + conditions_count.get("fauna nociva", 0),
-            "odor": conditions_count.get("mal olor", 0) + conditions_count.get("huele mal", 0),
-            "overflow": conditions_count.get("desbordado", 0) + conditions_count.get("desbordamiento", 0),
+            "uncovered": uncovered_count,
+            "fauna": fauna_count,
+            "odor": odor_count,
+            "overflow": overflow_count,
             "total": incidents_count,
         }
-        
+
         temporal_separation = {}
         for record in records:
             date_key = record.created_at.date().isoformat() if record.created_at else "unknown"
