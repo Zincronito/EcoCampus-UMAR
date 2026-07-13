@@ -141,7 +141,82 @@ async def create_collection_record(
         db.add(new_record)
         await db.commit()
         await db.refresh(new_record)
-       
+        
+    # ─── Generar notificaciones según problemas detectados
+        from app.models.notification import Notification
+        
+        notifications_to_create = []
+        
+        # Verificar condiciones problemáticas
+        if record.condition:
+            conditions = record.condition.lower().split(",")
+            
+            if any("destapado" in c for c in conditions):
+                notifications_to_create.append({
+                    "title": "Contenedor Destapado",
+                    "message": f"Contenedor en mal estado detectado",
+                    "type": "uncovered",
+                    "severity": "warning"
+                })
+            
+            if any("fauna" in c for c in conditions):
+                notifications_to_create.append({
+                    "title": "Presencia de Fauna",
+                    "message": f"Fauna nociva detectada en contenedor",
+                    "type": "fauna",
+                    "severity": "critical"
+                })
+            
+            if any("olor" in c for c in conditions):
+                notifications_to_create.append({
+                    "title": "Mal Olor",
+                    "message": f"Contenedor con mal olor detectado",
+                    "type": "odor",
+                    "severity": "warning"
+                })
+            
+            if any("desbordad" in c for c in conditions):
+                notifications_to_create.append({
+                    "title": "Contenedor Desbordado",
+                    "message": f"Contenedor desbordado - requiere atención inmediata",
+                    "type": "overflow",
+                    "severity": "critical"
+                })
+        
+        # Verificar separación deficiente
+        try:
+            separation_level = int(record.separation_level)
+            if separation_level >= 2:  # Deficiente o crítico
+                notifications_to_create.append({
+                    "title": "Separación Deficiente",
+                    "message": f"Sector con mala separación detectado",
+                    "type": "separation",
+                    "severity": "warning"
+                })
+        except:
+            pass
+        
+        admin_result = await db.execute(
+            select(User).where(User.role == "admin").limit(1)
+        )
+        admin_user = admin_result.scalar_one_or_none()
+        admin_user_id = admin_user.id if admin_user else None
+
+        # Crear notificaciones (UN SOLO LOOP)
+        if admin_user_id:
+            for notif_data in notifications_to_create:
+                notification = Notification(
+                    title=notif_data["title"],
+                    message=notif_data["message"],
+                    notification_type=notif_data["type"],
+                    severity=notif_data["severity"],
+                    user_id=admin_user_id,
+                )
+                db.add(notification)
+    
+            if notifications_to_create:
+                await db.commit()
+
         return new_record
        
     except HTTPException:

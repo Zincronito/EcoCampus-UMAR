@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, Search, HelpCircle } from "lucide-react";
+import { Bell, Search, HelpCircle, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getUserFromCookie } from "@/lib/api";
+import { useNotifications } from "@/hooks/useNotifications";
 
 interface User {
   id: string;
@@ -15,6 +16,8 @@ interface User {
 
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const { notifications, unreadCount, markAsRead } = useNotifications();
 
   useEffect(() => {
     const userData = getUserFromCookie();
@@ -31,6 +34,28 @@ export default function Header() {
         .join("")
         .toUpperCase()
     : "AD";
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case "critical":
+        return "bg-red-50 border-red-200";
+      case "warning":
+        return "bg-yellow-50 border-yellow-200";
+      default:
+        return "bg-blue-50 border-blue-200";
+    }
+  };
+
+  const getSeverityBadgeColor = (severity: string) => {
+    switch (severity) {
+      case "critical":
+        return "bg-red-500";
+      case "warning":
+        return "bg-yellow-500";
+      default:
+        return "bg-blue-500";
+    }
+  };
 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
@@ -49,17 +74,73 @@ export default function Header() {
       {/* lado derecho */}
       <div className="flex items-center gap-4">
         {/* notificaciones */}
-        <button className="relative p-2 hover:bg-gray-100 rounded-full transition-colors">
-          <Bell className="w-5 h-5 text-gray-600" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
+        <div className="relative">
+          <button 
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <Bell className="w-5 h-5 text-gray-600" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+
+          {/* Panel de notificaciones */}
+          {showNotifications && (
+            <div className="absolute right-0 top-12 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+              <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                <h3 className="font-semibold text-gray-900">Notificaciones</h3>
+                <button 
+                  onClick={() => setShowNotifications(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="max-h-96 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    No hay notificaciones
+                  </div>
+                ) : (
+                  notifications.map(notif => (
+                    <div 
+                      key={notif.id}
+                      className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                        !notif.is_read ? getSeverityColor(notif.severity) : ""
+                      }`}
+                      onClick={() => markAsRead(notif.id)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`w-2 h-2 rounded-full mt-2 ${getSeverityBadgeColor(notif.severity)}`}></div>
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">{notif.title}</p>
+                          <p className="text-sm text-gray-600 mt-1">{notif.message}</p>
+                          <p className="text-xs text-gray-400 mt-2">
+                            {new Date(notif.created_at).toLocaleTimeString()}
+                          </p>
+                        </div>
+                        {!notif.is_read && (
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* ayuda */}
         <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
           <HelpCircle className="w-5 h-5 text-gray-600" />
         </button>
 
-        {/* perfil de usuairo */}
+        {/* perfil de usuario */}
         <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
           <div className="text-right">
             <p className="text-sm font-semibold text-gray-900">

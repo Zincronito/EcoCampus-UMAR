@@ -6,7 +6,10 @@ from sqlalchemy import String, Boolean
 from app.core.database import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import TimestampMixin, UUIDMixin
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from app.models.notification import Notification
 
 class User(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "users"
@@ -21,6 +24,7 @@ class User(Base, UUIDMixin, TimestampMixin):
     shift: Mapped[str | None] = mapped_column(String(50))
     assigned_sector: Mapped[str | None] = mapped_column("assignedSector", String(100))
     is_active: Mapped[bool] = mapped_column("isActive", Boolean, default=True)
+    notifications: Mapped[list["Notification"]] = relationship(back_populates="user")
     # Relaciones
     collection_records: Mapped[list["CollectionRecord"]] = relationship(back_populates="collector")
     incidents: Mapped[list["Incident"]] = relationship(back_populates="reported_by")

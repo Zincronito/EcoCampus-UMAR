@@ -8,6 +8,7 @@ from . import (
     campus_router,
     locations_router,
     collectors_router,
+    notifications_router,
 )
 __all__ = [
     "auth_router",
@@ -18,4 +19,5 @@ __all__ = [
     "campus_router",
     "locations_router",
     "collectors_router",
+    "notifications_router",
 ]
