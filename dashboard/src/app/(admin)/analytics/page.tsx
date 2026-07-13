@@ -36,6 +36,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   LabelList,
+  Legend,
 } from "recharts";
 import { api } from "@/lib/api";
 import { campusAPI, locationsAPI, categoriesAPI } from "@/lib/api";
@@ -189,12 +190,12 @@ export default function AnalyticsPage() {
   // Pre-procesar datos de separación para la gráfica
   const separationChartData = analytics?.separation?.by_level
     ? Object.entries(analytics.separation.by_level).map(
-        ([level, data]: [string, any]) => ({
-          level: data.name,
-          count: data.count,
-          levelNumber: parseInt(level),
-        })
-      )
+      ([level, data]: [string, any]) => ({
+        level: data.name,
+        count: data.count,
+        levelNumber: parseInt(level),
+      })
+    )
     : [];
 
   return (
@@ -437,23 +438,22 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={320}>
-                  {/* Margen bottom incrementado para que quepa "Fecha" */}
                   <LineChart data={analytics.generation.temporal} margin={{ left: 10, right: 30, top: 20, bottom: 30 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                    <XAxis 
-                      dataKey="date" 
-                      tick={{ fill: '#6b7280' }} 
-                      tickLine={false} 
-                      axisLine={false} 
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: '#6b7280' }}
+                      tickLine={false}
+                      axisLine={false}
                       label={{ value: "Fecha", position: "insideBottom", offset: -20, fill: '#6b7280' }}
                     />
-                    <YAxis 
-                      label={{ value: "Generación Diaria (kg)", angle: -90, position: "insideLeft", offset: 10, style: { textAnchor: 'middle', fill: '#6b7280' } }} 
-                      tick={{ fill: '#6b7280' }} 
-                      tickLine={false} 
+                    <YAxis
+                      label={{ value: "Generación Diaria (kg)", angle: -90, position: "insideLeft", offset: 10, style: { textAnchor: 'middle', fill: '#6b7280' } }}
+                      tick={{ fill: '#6b7280' }}
+                      tickLine={false}
                       axisLine={false}
                     />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value: any) => [`${value} kg`, 'Peso']}
                       contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     />
@@ -487,7 +487,6 @@ export default function AnalyticsPage() {
                       cx="50%"
                       cy="50%"
                       outerRadius={105}
-                      // Se quitó el innerRadius para que vuelva a ser pastel
                       label={(entry: any) =>
                         `${entry.name}: ${entry.percentage}%`
                       }
@@ -504,7 +503,7 @@ export default function AnalyticsPage() {
                         )
                       )}
                     </Pie>
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value: any) => [`${value} kg`, 'Peso']}
                       contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     />
@@ -513,7 +512,6 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            {/* Gráfica 3: Generación por Sector */}
             <Card className="shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg font-semibold text-gray-800">
@@ -522,29 +520,28 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={320}>
-                  {/* Margen bottom incrementado para que quepa "(kg)" centrado */}
                   <BarChart
                     data={analytics.generation.by_sector}
                     layout="vertical"
                     margin={{ left: 20, right: 60, top: 20, bottom: 30 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
-                    <XAxis 
-                      type="number" 
-                      label={{ value: "(kg)", position: "insideBottom", offset: -20, fill: '#6b7280' }} 
+                    <XAxis
+                      type="number"
+                      label={{ value: "(kg)", position: "insideBottom", offset: -20, fill: '#6b7280' }}
                       tick={{ fill: '#6b7280' }}
                       axisLine={false}
                       tickLine={false}
                     />
-                    <YAxis 
-                      dataKey="sector" 
-                      type="category" 
-                      width={100} 
+                    <YAxis
+                      dataKey="sector"
+                      type="category"
+                      width={100}
                       tick={{ fill: '#4b5563', fontWeight: 500 }}
                       axisLine={false}
                       tickLine={false}
                     />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value: any) => [`${value} kg`, 'Peso']}
                       cursor={{ fill: '#f3f4f6' }}
                       contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
@@ -557,7 +554,208 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            {/* Gráfica 4: Distribución de Separación */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+                  Generación por Campus
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart
+                    data={analytics.generation.by_campus}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                    <XAxis
+                      dataKey="campus"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      tickMargin={10}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      tickFormatter={(value) => `${value} kg`}
+                    />
+                    <Tooltip
+                      cursor={{ fill: '#f3f4f6' }}
+                      contentStyle={{
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                      }}
+                      formatter={(value) => [`${value} kg`, 'Peso recolectado']}
+                    />
+                    <Bar
+                      dataKey="weight"
+                      name="Peso"
+                      fill="#16a34a"
+                      radius={[4, 4, 0, 0]}
+                      barSize={45}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+                  Nivel de Llenado por Sector
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart
+                    data={analytics.generation.by_fill_level_sector}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                    <XAxis
+                      dataKey="sector"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      tickMargin={10}
+                    />
+                    <YAxis
+                      domain={[0, 5]}
+                      ticks={[0, 1, 2, 3, 4, 5]}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                    />
+                    <Tooltip
+                      cursor={{ fill: '#f3f4f6' }}
+                      contentStyle={{
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                      }}
+                      formatter={(value) => [`Nivel ${value} de 5`, 'Llenado Promedio']}
+                    />
+                    <Bar
+                      dataKey="average_fill"
+                      name="Llenado Promedio"
+                      fill="#f59e0b"
+                      radius={[4, 4, 0, 0]}
+                      barSize={45}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card className="col-span-full">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+                  Evolución de Separación
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart
+                    data={analytics.separation.temporal}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+
+                    <XAxis
+                      dataKey="date"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      tickMargin={10}
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <Tooltip
+                      cursor={{ stroke: '#9ca3af', strokeWidth: 1, strokeDasharray: '5 5' }}
+                      contentStyle={{
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                      }}
+                      formatter={(value) => [`${value}%`, 'Separación Correcta']}
+                    />
+                    <Legend
+                      wrapperStyle={{ paddingTop: '20px' }}
+                      iconType="circle"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="correct_percentage"
+                      name="Separación Correcta"
+                      stroke="#10b981"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: '#10b981', strokeWidth: 0 }}
+                      activeDot={{ r: 6, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+                  Incidencias Operativas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart
+                    data={[
+                      { name: "Destapado", count: analytics.incidents.uncovered },
+                      { name: "Fauna", count: analytics.incidents.fauna },
+                      { name: "Mal olor", count: analytics.incidents.odor },
+                      { name: "Desbordamiento", count: analytics.incidents.overflow },
+                    ]}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                    <XAxis
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      tickMargin={10}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                    />
+                    <Tooltip
+                      cursor={{ fill: '#f3f4f6' }}
+                      contentStyle={{
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                      }}
+                      formatter={(value) => [value, 'Número de reportes']}
+                    />
+                    <Bar
+                      dataKey="count"
+                      name="Reportes"
+                      fill="#ef4444"
+                      radius={[4, 4, 0, 0]}
+                      barSize={45}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            
+            {/* Gráfica: Distribución de Separación */}
             <Card className="shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg font-semibold text-gray-800">
@@ -571,19 +769,19 @@ export default function AnalyticsPage() {
                     margin={{ left: 10, right: 20, top: 20, bottom: 20 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                    <XAxis 
-                      dataKey="level" 
+                    <XAxis
+                      dataKey="level"
                       tick={{ fill: '#4b5563', fontWeight: 500 }}
                       axisLine={false}
                       tickLine={false}
                     />
-                    <YAxis 
-                      label={{ value: "Número de registros", angle: -90, position: "insideLeft", offset: 15, style: { textAnchor: 'middle', fill: '#6b7280' } }} 
+                    <YAxis
+                      label={{ value: "Número de registros", angle: -90, position: "insideLeft", offset: 15, style: { textAnchor: 'middle', fill: '#6b7280' } }}
                       tick={{ fill: '#6b7280' }}
                       axisLine={false}
                       tickLine={false}
                     />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value: any) => [value, 'Registros']}
                       cursor={{ fill: '#f3f4f6' }}
                       contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}

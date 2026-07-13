@@ -532,7 +532,21 @@ async def get_analytics(
             if sector not in by_sector:
                 by_sector[sector] = 0
             by_sector[sector] += record.net_weight or 0
+        # Llenado promedio por sector
+        fill_level_by_sector = {}
+        for record in records:
+            sector = record.container.location.sector if record.container.location else "Sin sector"
+            if sector not in fill_level_by_sector:
+                fill_level_by_sector[sector] = []
+            
+            fill_map = {"empty": 0, "quarter": 1, "half": 2, "three_quarter": 3, "full": 4, "overflow": 5}
+            fill_value = fill_map.get(record.fill_level, 0)
+            fill_level_by_sector[sector].append(fill_value)
         
+        by_fill_level_sector = [
+            {"sector": sector, "average_fill": round(sum(values) / len(values), 2)}
+            for sector, values in fill_level_by_sector.items()
+        ]
         sector_data = [
             {"sector": s, "weight": round(w, 2), "percentage": round(w / total_weight * 100, 2) if total_weight > 0 else 0}
             for s, w in sorted(by_sector.items(), key=lambda x: x[1], reverse=True)
@@ -587,17 +601,19 @@ async def get_analytics(
         }
         
         incidents_count = sum(1 for r in records if r.incident)
-        incident_tags = {}
+# Contar condiciones del contenedor (destapado, fauna, mal olor, desbordado)
+        conditions_count = {}
         for record in records:
-            if record.incident:
-                tag = record.incident.quick_tag
-                incident_tags[tag] = incident_tags.get(tag, 0) + 1
-        
+            if record.condition:
+                conditions = [c.strip().lower() for c in record.condition.split(",")]
+                for cond in conditions:
+                    conditions_count[cond] = conditions_count.get(cond, 0) + 1
+
         incident_data = {
-            "uncovered": incident_tags.get("destapado", 0),
-            "fauna": incident_tags.get("fauna", 0),
-            "odor": incident_tags.get("olor", 0),
-            "overflow": incident_tags.get("desbordado", 0),
+            "uncovered": conditions_count.get("destapado", 0),
+            "fauna": conditions_count.get("fauna", 0) + conditions_count.get("fauna nociva", 0),
+            "odor": conditions_count.get("mal olor", 0) + conditions_count.get("huele mal", 0),
+            "overflow": conditions_count.get("desbordado", 0) + conditions_count.get("desbordamiento", 0),
             "total": incidents_count,
         }
         
@@ -632,6 +648,7 @@ async def get_analytics(
                 "by_sector": sector_data,
                 "by_campus": campus_data,
                 "temporal": temporal_list,
+                "by_fill_level_sector": by_fill_level_sector,
             },
             "operations": {
                 "average_fill_level": round(average_fill_level, 2),
