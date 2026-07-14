@@ -46,6 +46,7 @@ class CollectionRecordResponse(BaseModel):
     physical_state: str  # Nuevo campo
     condition: str
     separation_level: str
+    is_weight_estimated: bool
     container_id: uuid.UUID
     collector_id: uuid.UUID
     created_at: datetime

@@ -8,18 +8,30 @@ import {
   TextInput,
   ActivityIndicator,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { containerService } from "../services/authService";
+// Nota: Ajusté la ruta del import asumiendo que containerService tiene su propio archivo
+import { containerService } from "../services/authService"; 
 import {
   ArrowLeft,
   Edit3,
   ScanLine,
   RotateCcw,
+  Camera,
 } from "lucide-react-native";
 
+// Interfaces de tipado de datos estrictas para la entrada
+export interface ContainerData {
+  id: string;
+  code: string;
+  category?: string;
+  location?: string;
+}
+
 interface QRScannerScreenProps {
-  onContainerDetected: (container: any) => void;
+  onContainerDetected: (container: ContainerData) => void;
   onSwitchToHistory: () => void;
   onLogout: () => void;
 }
@@ -51,7 +63,7 @@ export default function QRScannerScreen({
   const searchContainer = async (code: string) => {
     try {
       setSearching(true);
-      const container = await containerService.getByCode(code.trim());
+      const container: ContainerData = await containerService.getByCode(code.trim());
       onContainerDetected(container);
     } catch (error: any) {
       Alert.alert(
@@ -74,7 +86,7 @@ export default function QRScannerScreen({
 
   const handleManualSubmit = async () => {
     if (!manualCode.trim()) {
-      Alert.alert("Error", "Ingresa un código de contenedor");
+      Alert.alert("Dato requerido", "Por favor ingresa un código de contenedor válido.");
       return;
     }
 
@@ -86,93 +98,93 @@ export default function QRScannerScreen({
   if (!permission) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#1e3a8a" />
-        <Text style={styles.loadingText}>Cargando cámara...</Text>
+        <ActivityIndicator size="large" color="#2563eb" />
+        <Text style={styles.loadingText}>Iniciando módulo de cámara...</Text>
       </View>
     );
   }
+
+  // Renderizado del Modal extraído para mayor limpieza
+  const renderManualInputModal = () => (
+    <Modal
+      visible={manualInputVisible}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setManualInputVisible(false)}
+    >
+      <KeyboardAvoidingView 
+        style={styles.modalOverlay}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Ingreso Manual de ID</Text>
+          <Text style={styles.modalHint}>
+            Ejemplo de formato: CONT-HUA-001
+          </Text>
+          <TextInput
+            style={styles.modalInput}
+            placeholder="CONT-XXX-XXX"
+            placeholderTextColor="#9ca3af"
+            value={manualCode}
+            onChangeText={setManualCode}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            autoFocus
+          />
+          <View style={styles.modalBtnRow}>
+            <TouchableOpacity
+              style={[styles.modalBtn, styles.modalBtnCancel]}
+              onPress={() => {
+                setManualInputVisible(false);
+                setManualCode("");
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.modalBtnTextCancel}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modalBtn, styles.modalBtnConfirm]}
+              onPress={handleManualSubmit}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.modalBtnTextConfirm}>Buscar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
 
   if (!permission.granted) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onLogout}>
-            <ArrowLeft size={24} color="#1e40af" strokeWidth={2.5} />
+          <TouchableOpacity onPress={onLogout} style={styles.backButton}>
+            <ArrowLeft size={24} color="#1e293b" strokeWidth={2.5} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>GESTION DE RE..</Text>
-          <Text style={styles.statusText}>EN LINEA</Text>
+          <Text style={styles.headerTitle}>SISTEMA DE ESCANEO</Text>
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusText}>EN LÍNEA</Text>
+          </View>
         </View>
 
         <View style={styles.permissionContainer}>
-          <Text style={styles.permissionTitle}>Permiso de Cámara</Text>
+          <View style={styles.iconCircle}>
+            <Camera size={32} color="#2563eb" strokeWidth={2} />
+          </View>
+          <Text style={styles.permissionTitle}>Acceso a Cámara</Text>
           <Text style={styles.permissionText}>
-            Necesitamos acceso a la cámara para escanear los códigos QR de los
-            contenedores.
+            Para registrar la recolección, necesitamos acceso a la cámara y así escanear los códigos QR de los contenedores.
           </Text>
           <TouchableOpacity
-            style={styles.permissionBtn}
+            style={styles.buttonPrimary}
             onPress={requestPermission}
+            activeOpacity={0.8}
           >
-            <Text style={styles.permissionBtnText}>OTORGAR PERMISO</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.manualBtn}
-            onPress={() => setManualInputVisible(true)}
-          >
-            <Edit3 size={16} color="#000" strokeWidth={2.5} style={{ marginRight: 8 }} />
-            <Text style={styles.manualBtnText}>INGRESAR ID MANUALMENTE</Text>
+            <Text style={styles.buttonPrimaryText}>HABILITAR CÁMARA</Text>
           </TouchableOpacity>
         </View>
-
-        {renderManualInputModal()}
       </View>
-    );
-  }
-
-  function renderManualInputModal() {
-    return (
-      <Modal
-        visible={manualInputVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setManualInputVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Ingresar ID del Contenedor</Text>
-            <Text style={styles.modalHint}>
-              Ejemplo: CONT-HUA-001
-            </Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="CONT-XXX-XXX"
-              placeholderTextColor="#9ca3af"
-              value={manualCode}
-              onChangeText={setManualCode}
-              autoCapitalize="characters"
-              autoFocus
-            />
-            <View style={styles.modalBtnRow}>
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.modalBtnCancel]}
-                onPress={() => {
-                  setManualInputVisible(false);
-                  setManualCode("");
-                }}
-              >
-                <Text style={styles.modalBtnTextCancel}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.modalBtnConfirm]}
-                onPress={handleManualSubmit}
-              >
-                <Text style={styles.modalBtnText}>Buscar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     );
   }
 
@@ -180,67 +192,74 @@ export default function QRScannerScreen({
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onLogout}>
-          <ArrowLeft size={24} color="#1e40af" strokeWidth={2.5} />
+        <TouchableOpacity onPress={onLogout} style={styles.backButton}>
+          <ArrowLeft size={24} color="#1e293b" strokeWidth={2.5} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>GESTION DE RE..</Text>
-        <Text style={styles.statusText}>EN LINEA</Text>
+        <Text style={styles.headerTitle}>SISTEMA DE ESCANEO</Text>
+        <View style={styles.statusBadge}>
+          <Text style={styles.statusText}>EN LÍNEA</Text>
+        </View>
       </View>
 
       <View style={styles.scannerContent}>
-        <Text style={styles.mainTitle}>Escáner de Contenedor</Text>
-        <Text style={styles.subtitle}>
-          Alinee el código QR del contenedor dentro del marco.
-        </Text>
+        <View style={styles.textContainer}>
+          <Text style={styles.mainTitle}>Escáner de Contenedor</Text>
+          <Text style={styles.subtitle}>
+            Alinee el código QR dentro del marco para detectarlo automáticamente.
+          </Text>
+        </View>
 
         {/* Marco de cámara */}
-        <View style={styles.cameraContainer}>
-          <CameraView
-            style={styles.camera}
-            facing="back"
-            barcodeScannerSettings={{
-              barcodeTypes: ["qr"],
-            }}
-            onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
-          />
+        <View style={styles.cameraWrapper}>
+          <View style={styles.cameraContainer}>
+            <CameraView
+              style={styles.camera}
+              facing="back"
+              barcodeScannerSettings={{
+                barcodeTypes: ["qr"],
+              }}
+              onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
+            />
 
-          {/* Overlay con marco de escaneo */}
-          <View style={styles.overlay}>
-            <View style={styles.scanFrame}>
-              <View style={[styles.corner, styles.cornerTopLeft]} />
-              <View style={[styles.corner, styles.cornerTopRight]} />
-              <View style={[styles.corner, styles.cornerBottomLeft]} />
-              <View style={[styles.corner, styles.cornerBottomRight]} />
+            {/* Overlay con marco de escaneo */}
+            <View style={styles.overlay}>
+              <View style={styles.scanFrame}>
+                <View style={[styles.corner, styles.cornerTopLeft]} />
+                <View style={[styles.corner, styles.cornerTopRight]} />
+                <View style={[styles.corner, styles.cornerBottomLeft]} />
+                <View style={[styles.corner, styles.cornerBottomRight]} />
+              </View>
             </View>
+
+            {/* Indicador de búsqueda */}
+            {searching && (
+              <View style={styles.searchingOverlay}>
+                <ActivityIndicator size="large" color="#ffffff" />
+                <Text style={styles.searchingText}>Consultando base de datos...</Text>
+              </View>
+            )}
           </View>
-
-          {/* Indicador de búsqueda */}
-          {searching && (
-            <View style={styles.searchingOverlay}>
-              <ActivityIndicator size="large" color="#fff" />
-              <Text style={styles.searchingText}>Buscando contenedor...</Text>
-            </View>
-          )}
         </View>
 
         {/* Botón Ingresar Manualmente */}
         <TouchableOpacity
           style={styles.manualBtnInline}
           onPress={() => setManualInputVisible(true)}
+          activeOpacity={0.7}
         >
-          <Edit3 size={16} color="#000" strokeWidth={2.5} style={{ marginRight: 8 }} />
+          <Edit3 size={18} color="#2563eb" strokeWidth={2.5} style={{ marginRight: 8 }} />
           <Text style={styles.manualBtnInlineText}>INGRESAR ID MANUALMENTE</Text>
         </TouchableOpacity>
       </View>
 
       {/* Tab Bar */}
       <View style={styles.tabBar}>
-        <TouchableOpacity style={[styles.tabItem, styles.tabActive]}>
-          <ScanLine size={20} color="#fff" strokeWidth={2.5} />
+        <TouchableOpacity style={[styles.tabItem, styles.tabActive]} activeOpacity={1}>
+          <ScanLine size={22} color="#ffffff" strokeWidth={2.5} />
           <Text style={styles.tabTextActive}>ESCANEAR</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={onSwitchToHistory}>
-          <RotateCcw size={20} color="#000" strokeWidth={2.5} />
+        <TouchableOpacity style={styles.tabItem} onPress={onSwitchToHistory} activeOpacity={0.7}>
+          <RotateCcw size={22} color="#000000" strokeWidth={2.5} />
           <Text style={styles.tabText}>HISTORIAL</Text>
         </TouchableOpacity>
       </View>
@@ -253,71 +272,100 @@ export default function QRScannerScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#e8e6f5",
+    backgroundColor: "#f8fafc", // Gris azulado súper claro
   },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#e8e6f5",
+    backgroundColor: "#f8fafc",
   },
   loadingText: {
-    marginTop: 10,
-    color: "#666",
+    marginTop: 16,
+    color: "#64748b",
+    fontSize: 15,
+    fontWeight: "500",
   },
   header: {
     backgroundColor: "#ffffff",
-    paddingTop: 50,
+    paddingTop: Platform.OS === 'ios' ? 50 : 40,
     paddingBottom: 16,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottomWidth: 2,
-    borderBottomColor: "#000",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 10, // Para que la sombra se vea sobre el contenido
+  },
+  backButton: {
+    padding: 4,
   },
   headerTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#000",
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#1e293b",
     flex: 1,
     textAlign: "center",
+    letterSpacing: 1,
+  },
+  statusBadge: {
+    backgroundColor: "#eff6ff", // Fondo azul claro
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: "#1e40af",
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#2563eb",
     letterSpacing: 0.5,
   },
   scannerContent: {
     flex: 1,
-    padding: 16,
+    padding: 24,
     alignItems: "center",
   },
-  mainTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#000",
-    textAlign: "center",
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#6b7280",
-    textAlign: "center",
+  textContainer: {
+    width: "100%",
     marginBottom: 24,
   },
-  cameraContainer: {
+  mainTitle: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#0f172a",
+    textAlign: "center",
+    marginBottom: 8,
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: "#64748b",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  cameraWrapper: {
     width: "100%",
     aspectRatio: 1,
-    backgroundColor: "#000",
-    borderRadius: 8,
+    borderRadius: 24,
+    backgroundColor: "#ffffff",
+    padding: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+    marginBottom: 32,
+  },
+  cameraContainer: {
+    flex: 1,
+    borderRadius: 16,
     overflow: "hidden",
     position: "relative",
-    borderWidth: 2,
-    borderColor: "#000",
-    marginBottom: 20,
+    backgroundColor: "#000",
   },
   camera: {
     flex: 1,
@@ -326,216 +374,223 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.3)", // Fondo semi-transparente para enfocar el centro
   },
   scanFrame: {
-    width: "70%",
+    width: "65%",
     aspectRatio: 1,
     position: "relative",
   },
   corner: {
     position: "absolute",
-    width: 30,
-    height: 30,
-    borderColor: "#3b82f6",
-    borderWidth: 4,
+    width: 40,
+    height: 40,
+    borderColor: "#ffffff",
+    borderWidth: 5,
   },
   cornerTopLeft: {
     top: 0,
     left: 0,
     borderRightWidth: 0,
     borderBottomWidth: 0,
+    borderTopLeftRadius: 12,
   },
   cornerTopRight: {
     top: 0,
     right: 0,
     borderLeftWidth: 0,
     borderBottomWidth: 0,
+    borderTopRightRadius: 12,
   },
   cornerBottomLeft: {
     bottom: 0,
     left: 0,
     borderRightWidth: 0,
     borderTopWidth: 0,
+    borderBottomLeftRadius: 12,
   },
   cornerBottomRight: {
     bottom: 0,
     right: 0,
     borderLeftWidth: 0,
     borderTopWidth: 0,
+    borderBottomRightRadius: 12,
   },
   searchingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.7)",
+    backgroundColor: "rgba(15, 23, 42, 0.8)",
     justifyContent: "center",
     alignItems: "center",
   },
   searchingText: {
-    color: "#fff",
-    marginTop: 10,
-    fontSize: 14,
-    fontWeight: "bold",
+    color: "#ffffff",
+    marginTop: 16,
+    fontSize: 15,
+    fontWeight: "600",
+    letterSpacing: 0.5,
   },
   manualBtnInline: {
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: "#000",
-    borderRadius: 6,
-    padding: 14,
+    backgroundColor: "#eff6ff", // Fondo azul sutil
+    borderRadius: 12,
+    paddingVertical: 16,
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
   },
   manualBtnInlineText: {
-    fontSize: 13,
-    fontWeight: "bold",
-    color: "#000",
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#2563eb",
     letterSpacing: 0.5,
   },
   permissionContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 30,
+    padding: 32,
+  },
+  iconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#eff6ff",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
   },
   permissionTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#000",
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#0f172a",
     marginBottom: 12,
     textAlign: "center",
   },
   permissionText: {
-    fontSize: 14,
-    color: "#6b7280",
+    fontSize: 15,
+    color: "#64748b",
     textAlign: "center",
-    marginBottom: 24,
-    lineHeight: 20,
+    marginBottom: 32,
+    lineHeight: 24,
   },
-  permissionBtn: {
-    backgroundColor: "#1e3a8a",
-    padding: 14,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: "#000",
-    marginBottom: 12,
+  buttonPrimary: {
+    backgroundColor: "#2563eb",
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    shadowColor: "#2563eb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  permissionBtnText: {
-    color: "#fff",
+  buttonPrimaryText: {
+    color: "#ffffff",
     fontSize: 14,
     fontWeight: "bold",
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
-  manualBtn: {
-    backgroundColor: "#fff",
-    padding: 14,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: "#000",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  manualBtnText: {
-    fontSize: 13,
-    fontWeight: "bold",
-    color: "#000",
-  },
-  // Modal
+  // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: 24,
   },
   modalContent: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
     padding: 24,
     width: "100%",
-    maxWidth: 400,
-    borderWidth: 2,
-    borderColor: "#000",
+    maxWidth: 340,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#000",
-    marginBottom: 6,
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#0f172a",
+    marginBottom: 8,
+    textAlign: "center",
   },
   modalHint: {
-    fontSize: 12,
-    color: "#6b7280",
-    marginBottom: 14,
-    fontStyle: "italic",
+    fontSize: 13,
+    color: "#64748b",
+    marginBottom: 20,
+    textAlign: "center",
   },
   modalInput: {
-    backgroundColor: "#f3f4f6",
-    borderWidth: 2,
-    borderColor: "#000",
-    borderRadius: 6,
-    padding: 12,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     fontSize: 16,
-    color: "#000",
-    marginBottom: 20,
-    fontWeight: "bold",
+    color: "#0f172a",
+    marginBottom: 24,
+    fontWeight: "600",
+    textAlign: "center",
   },
   modalBtnRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: 12,
   },
   modalBtn: {
     flex: 1,
-    padding: 12,
-    borderRadius: 6,
+    paddingVertical: 14,
+    borderRadius: 10,
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#000",
+    justifyContent: "center",
   },
   modalBtnCancel: {
-    backgroundColor: "#fff",
+    backgroundColor: "#f1f5f9",
   },
   modalBtnConfirm: {
-    backgroundColor: "#1e3a8a",
-  },
-  modalBtnText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
+    backgroundColor: "#2563eb",
   },
   modalBtnTextCancel: {
-    color: "#000",
-    fontSize: 14,
-    fontWeight: "bold",
+    color: "#475569",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  modalBtnTextConfirm: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "700",
   },
   tabBar: {
     flexDirection: "row",
-    backgroundColor: "#fff",
+    backgroundColor: "#ffffff",
     borderTopWidth: 2,
-    borderTopColor: "#000",
+    borderTopColor: "#000000",
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
   },
   tabItem: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
   tabActive: {
-    backgroundColor: "#000",
+    backgroundColor: "#000000",
   },
   tabText: {
-    fontSize: 11,
-    fontWeight: "bold",
-    color: "#000",
-    marginTop: 4,
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#000000",
+    marginTop: 6,
     letterSpacing: 0.5,
   },
   tabTextActive: {
-    fontSize: 11,
-    fontWeight: "bold",
-    color: "#fff",
-    marginTop: 4,
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#ffffff",
+    marginTop: 6,
     letterSpacing: 0.5,
   },
 });

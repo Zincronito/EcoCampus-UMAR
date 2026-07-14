@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   TextInput,
+  Platform,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
@@ -117,7 +118,7 @@ export default function CollectionScreen({
     return isNaN(num) ? 0 : num;
   };
 
-  // Validar si el formulario esta completo (para feedback visual del boton incidencia)
+  // Validar si el formulario esta completo
   const isFormComplete = (() => {
     if (willWeigh === null) return false;
     if (willWeigh === true) {
@@ -245,7 +246,7 @@ export default function CollectionScreen({
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#1a5f3d" />
+        <ActivityIndicator size="large" color="#2563eb" />
         <Text style={styles.loadingText}>Cargando...</Text>
       </View>
     );
@@ -261,9 +262,10 @@ export default function CollectionScreen({
 
   return (
     <View style={styles.container}>
+      {/* Header moderno y limpio */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBackToScanner}>
-          <ArrowLeft size={24} color="#1e40af" strokeWidth={2.5} />
+        <TouchableOpacity onPress={onBackToScanner} style={styles.backButton}>
+          <ArrowLeft size={24} color="#1e293b" strokeWidth={2.5} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>EcoCampus</Text>
         <View style={styles.statusBadge}>
@@ -274,15 +276,15 @@ export default function CollectionScreen({
             ]}
           />
           <Text style={styles.statusText}>
-            {isOnline ? "EN LINEA" : "SIN CONEXION"}
+            {isOnline ? "EN LÍNEA" : "SIN CONEXIÓN"}
           </Text>
         </View>
       </View>
 
-      <ScrollView style={styles.scrollContent}>
-        <Text style={styles.mainTitle}>Mediciones de Carga</Text>
+      <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Text style={styles.mainTitle}>Registro de Recolección</Text>
 
-        {/* PESO - PREGUNTA*/}
+        {/* PESO - PREGUNTA */}
         <View style={styles.cardBox}>
           <Text style={styles.cardTitle}>¿Vas a pesar el contenedor?</Text>
           <Text style={styles.cardHint}>
@@ -293,53 +295,55 @@ export default function CollectionScreen({
             <TouchableOpacity
               style={[
                 styles.weighBtn,
-                styles.weighBtnYes,
-                willWeigh === true && styles.weighBtnSelected,
+                willWeigh === true ? styles.weighBtnYes : styles.weighBtnInactive,
               ]}
               onPress={() => setWillWeigh(true)}
+              activeOpacity={0.7}
             >
-              <Check size={20} color="#fff" strokeWidth={2.5} style={{ marginRight: 6 }} />
-              <Text style={styles.weighBtnText}>SI</Text>
+              {willWeigh === true && <Check size={18} color="#ffffff" strokeWidth={3} style={{ marginRight: 6 }} />}
+              <Text style={[styles.weighBtnText, willWeigh === true && { color: "#ffffff" }]}>SÍ</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[
                 styles.weighBtn,
-                styles.weighBtnNo,
-                willWeigh === false && styles.weighBtnSelected,
+                willWeigh === false ? styles.weighBtnNo : styles.weighBtnInactive,
               ]}
               onPress={() => {
                 setWillWeigh(false);
                 setWeightInput("");
               }}
+              activeOpacity={0.7}
             >
-              <Text style={styles.weighBtnText}>NO</Text>
+              <Text style={[styles.weighBtnText, willWeigh === false && { color: "#ffffff" }]}>NO</Text>
             </TouchableOpacity>
           </View>
 
           {willWeigh === true && (
             <View style={styles.weightInputContainer}>
-              <Text style={styles.weightInputLabel}>Peso (kg)</Text>
+              <Text style={styles.weightInputLabel}>Peso bruto total (kg)</Text>
               <TextInput
                 style={styles.weightInput}
                 value={weightInput}
                 onChangeText={setWeightInput}
                 keyboardType="decimal-pad"
                 placeholder="Ej: 25.5"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor="#94a3b8"
               />
               {weightInput !== "" && getWeightNumber() > 0 && getWeightNumber() <= selectedContainer.tare_weight && (
                 <View style={styles.warningBox}>
-                  <AlertTriangle size={14} color="#dc2626" strokeWidth={2.5} style={{ marginRight: 6 }} />
+                  <AlertTriangle size={14} color="#ef4444" strokeWidth={2.5} style={{ marginRight: 6 }} />
                   <Text style={styles.warningText}>
                     El peso debe ser mayor que la tara ({selectedContainer.tare_weight} kg)
                   </Text>
                 </View>
               )}
               {weightInput !== "" && getWeightNumber() > selectedContainer.tare_weight && (
-                <Text style={styles.netWeightHint}>
-                  Peso neto del residuo: {(getWeightNumber() - selectedContainer.tare_weight).toFixed(2)} kg
-                </Text>
+                <View style={styles.successBox}>
+                  <Text style={styles.netWeightHint}>
+                    Peso neto del residuo: {(getWeightNumber() - selectedContainer.tare_weight).toFixed(2)} kg
+                  </Text>
+                </View>
               )}
             </View>
           )}
@@ -362,53 +366,62 @@ export default function CollectionScreen({
               style={[
                 styles.fillBox,
                 { backgroundColor: "#10b981" },
-                fillLevel === "empty" && styles.fillBoxSelected,  // ← CAMBIAR
+                fillLevel === "empty" && styles.boxSelected,
               ]}
               onPress={() => setFillLevel("empty")}
+              activeOpacity={0.8}
             >
               <Text style={styles.fillNumber}>0</Text>
-              <Text style={styles.fillLabel}>Vacio</Text>
+              <Text style={styles.fillLabel}>Vacío</Text>
             </TouchableOpacity>
+            
             <TouchableOpacity
               style={[
                 styles.fillBox,
                 { backgroundColor: "#84cc16" },
-                fillLevel === "quarter" && styles.fillBoxSelected,  // ← CAMBIAR
+                fillLevel === "quarter" && styles.boxSelected,
               ]}
               onPress={() => setFillLevel("quarter")}
+              activeOpacity={0.8}
             >
               <Text style={styles.fillNumber}>1</Text>
               <Text style={styles.fillLabel}>{"<"}25%</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={[
                 styles.fillBox,
                 { backgroundColor: "#eab308" },
-                fillLevel === "half" && styles.fillBoxSelected,  // ← CAMBIAR
+                fillLevel === "half" && styles.boxSelected,
               ]}
               onPress={() => setFillLevel("half")}
+              activeOpacity={0.8}
             >
               <Text style={styles.fillNumber}>2</Text>
               <Text style={styles.fillLabel}>25-50%</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={[
                 styles.fillBox,
                 { backgroundColor: "#f97316" },
-                fillLevel === "three_quarter" && styles.fillBoxSelected,  // ← CAMBIAR
+                fillLevel === "three_quarter" && styles.boxSelected,
               ]}
               onPress={() => setFillLevel("three_quarter")}
+              activeOpacity={0.8}
             >
               <Text style={styles.fillNumber}>3</Text>
               <Text style={styles.fillLabel}>50-75%</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={[
                 styles.fillBox,
                 { backgroundColor: "#ef4444" },
-                fillLevel === "full" && styles.fillBoxSelected,  // ← CAMBIAR
+                fillLevel === "full" && styles.boxSelected,
               ]}
               onPress={() => setFillLevel("full")}
+              activeOpacity={0.8}
             >
               <Text style={styles.fillNumber}>4</Text>
               <Text style={styles.fillLabel}>{">"}75%</Text>
@@ -418,30 +431,32 @@ export default function CollectionScreen({
           <TouchableOpacity
             style={[
               styles.desbordadoBtn,
-              fillLevel === "overflow" && styles.desbordadoBtnSelected,  // ← CAMBIAR
+              fillLevel === "overflow" && styles.boxSelected,
             ]}
             onPress={() => setFillLevel("overflow")}
+            activeOpacity={0.8}
           >
-            <AlertTriangle size={20} color="#fff" strokeWidth={2.5} style={{ marginRight: 8 }} />
+            <AlertTriangle size={18} color="#ffffff" strokeWidth={2.5} style={{ marginRight: 8 }} />
             <Text style={styles.desbordadoText}>5 - Desbordado</Text>
           </TouchableOpacity>
         </View>
 
         {/* ESTADO FISICO */}
         <View style={styles.cardBox}>
-          <Text style={styles.cardTitle}>Estado fisico del contenedor</Text>
+          <Text style={styles.cardTitle}>Estado físico del contenedor</Text>
           <Text style={styles.cardHint}>Puedes seleccionar varias opciones</Text>
 
           <TouchableOpacity
             style={[
               styles.conditionBtn,
               { backgroundColor: "#10b981" },
-              physicalStates.includes("buen_estado") && styles.conditionBtnSelected,
+              physicalStates.includes("buen_estado") && styles.boxSelected,
             ]}
             onPress={() => togglePhysicalState("buen_estado")}
+            activeOpacity={0.8}
           >
             <Text style={styles.conditionText}>
-              {physicalStates.includes("buen_estado") ? "\u2713 " : ""}Buen estado
+              {physicalStates.includes("buen_estado") ? "✓ " : ""}Buen estado
             </Text>
           </TouchableOpacity>
 
@@ -449,12 +464,13 @@ export default function CollectionScreen({
             style={[
               styles.conditionBtn,
               { backgroundColor: "#eab308" },
-              physicalStates.includes("tapa_rota") && styles.conditionBtnSelected,
+              physicalStates.includes("tapa_rota") && styles.boxSelected,
             ]}
             onPress={() => togglePhysicalState("tapa_rota")}
+            activeOpacity={0.8}
           >
             <Text style={styles.conditionText}>
-              {physicalStates.includes("tapa_rota") ? "\u2713 " : ""}Tapa rota
+              {physicalStates.includes("tapa_rota") ? "✓ " : ""}Tapa rota
             </Text>
           </TouchableOpacity>
 
@@ -462,31 +478,33 @@ export default function CollectionScreen({
             style={[
               styles.conditionBtn,
               { backgroundColor: "#ef4444" },
-              physicalStates.includes("contenedor_roto") && styles.conditionBtnSelected,
+              physicalStates.includes("contenedor_roto") && styles.boxSelected,
             ]}
             onPress={() => togglePhysicalState("contenedor_roto")}
+            activeOpacity={0.8}
           >
             <Text style={styles.conditionText}>
-              {physicalStates.includes("contenedor_roto") ? "\u2713 " : ""}Contenedor roto
+              {physicalStates.includes("contenedor_roto") ? "✓ " : ""}Contenedor roto
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* CONDICIONES */}
         <View style={styles.cardBox}>
-          <Text style={styles.cardTitle}>¿En que condiciones esta el contenedor?</Text>
+          <Text style={styles.cardTitle}>Condiciones del entorno</Text>
           <Text style={styles.cardHint}>Puedes seleccionar varias opciones</Text>
 
           <TouchableOpacity
             style={[
               styles.conditionBtn,
               { backgroundColor: "#10b981" },
-              conditions.includes("tapado") && styles.conditionBtnSelected,
+              conditions.includes("tapado") && styles.boxSelected,
             ]}
             onPress={() => toggleCondition("tapado")}
+            activeOpacity={0.8}
           >
             <Text style={styles.conditionText}>
-              {conditions.includes("tapado") ? "\u2713 " : ""}Tapado
+              {conditions.includes("tapado") ? "✓ " : ""}Tapado
             </Text>
           </TouchableOpacity>
 
@@ -494,12 +512,13 @@ export default function CollectionScreen({
             style={[
               styles.conditionBtn,
               { backgroundColor: "#eab308" },
-              conditions.includes("destapado") && styles.conditionBtnSelected,
+              conditions.includes("destapado") && styles.boxSelected,
             ]}
             onPress={() => toggleCondition("destapado")}
+            activeOpacity={0.8}
           >
             <Text style={styles.conditionText}>
-              {conditions.includes("destapado") ? "\u2713 " : ""}Destapado
+              {conditions.includes("destapado") ? "✓ " : ""}Destapado
             </Text>
           </TouchableOpacity>
 
@@ -507,12 +526,13 @@ export default function CollectionScreen({
             style={[
               styles.conditionBtn,
               { backgroundColor: "#f97316" },
-              conditions.includes("fauna") && styles.conditionBtnSelected,
+              conditions.includes("fauna") && styles.boxSelected,
             ]}
             onPress={() => toggleCondition("fauna")}
+            activeOpacity={0.8}
           >
             <Text style={styles.conditionText}>
-              {conditions.includes("fauna") ? "\u2713 " : ""}Presencia de fauna nociva
+              {conditions.includes("fauna") ? "✓ " : ""}Presencia de fauna nociva
             </Text>
           </TouchableOpacity>
 
@@ -520,74 +540,84 @@ export default function CollectionScreen({
             style={[
               styles.conditionBtn,
               { backgroundColor: "#f97316" },
-              conditions.includes("huele_mal") && styles.conditionBtnSelected,
+              conditions.includes("huele_mal") && styles.boxSelected,
             ]}
             onPress={() => toggleCondition("huele_mal")}
+            activeOpacity={0.8}
           >
             <Text style={styles.conditionText}>
-              {conditions.includes("huele_mal") ? "\u2713 " : ""}Huele mal
+              {conditions.includes("huele_mal") ? "✓ " : ""}Mal olor perceptible
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[
               styles.conditionBtn,
-              { backgroundColor: "#dc2626" },
-              conditions.includes("desbordado") && styles.conditionBtnSelected,
+              { backgroundColor: "#ef4444" },
+              conditions.includes("desbordado") && styles.boxSelected,
             ]}
             onPress={() => toggleCondition("desbordado")}
+            activeOpacity={0.8}
           >
             <Text style={styles.conditionText}>
-              {conditions.includes("desbordado") ? "\u2713 " : ""}Desbordado
+              {conditions.includes("desbordado") ? "✓ " : ""}Desbordamiento
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* NIVEL DE SEPARACION */}
         <View style={styles.cardBox}>
-          <Text style={styles.cardTitle}>¿Cual es el nivel de separacion?</Text>
+          <Text style={styles.cardTitle}>Nivel de separación en la fuente</Text>
+          
           <TouchableOpacity
             style={[
               styles.separationBtn,
               { backgroundColor: "#10b981" },
-              separationLevel === "0" && styles.separationBtnSelected,
+              separationLevel === "0" && styles.boxSelected,
             ]}
             onPress={() => setSeparationLevel("0")}
+            activeOpacity={0.8}
           >
-            <Text style={styles.separationTitle}>Nivel 0 o Excelente</Text>
-            <Text style={styles.separationDesc}>cumplimiento total, 0% contaminantes</Text>
+            <Text style={styles.separationTitle}>Nivel 0 - Excelente</Text>
+            <Text style={styles.separationDesc}>Cumplimiento total, 0% contaminantes</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={[
               styles.separationBtn,
               { backgroundColor: "#eab308" },
-              separationLevel === "1" && styles.separationBtnSelected,
+              separationLevel === "1" && styles.boxSelected,
             ]}
             onPress={() => setSeparationLevel("1")}
+            activeOpacity={0.8}
           >
-            <Text style={styles.separationTitle}>Nivel 1 o Aceptable</Text>
-            <Text style={styles.separationDesc}>presencia minima ({"<"}10% volumen)</Text>
+            <Text style={styles.separationTitle}>Nivel 1 - Aceptable</Text>
+            <Text style={styles.separationDesc}>Presencia mínima ({"<"}10% volumen)</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={[
               styles.separationBtn,
               { backgroundColor: "#f97316" },
-              separationLevel === "2" && styles.separationBtnSelected,
+              separationLevel === "2" && styles.boxSelected,
             ]}
             onPress={() => setSeparationLevel("2")}
+            activeOpacity={0.8}
           >
-            <Text style={styles.separationTitle}>Nivel 2 o Deficiente</Text>
-            <Text style={styles.separationDesc}>mezcla evidente (10% - 50% error)</Text>
+            <Text style={styles.separationTitle}>Nivel 2 - Deficiente</Text>
+            <Text style={styles.separationDesc}>Mezcla evidente (10% - 50% error)</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={[
               styles.separationBtn,
               { backgroundColor: "#ef4444" },
-              separationLevel === "3" && styles.separationBtnSelected,
+              separationLevel === "3" && styles.boxSelected,
             ]}
             onPress={() => setSeparationLevel("3")}
+            activeOpacity={0.8}
           >
-            <Text style={styles.separationTitle}>Nivel 3 o Critico</Text>
+            <Text style={styles.separationTitle}>Nivel 3 - Crítico</Text>
             <Text style={styles.separationDesc}>Contaminado ({">"}50% volumen)</Text>
           </TouchableOpacity>
         </View>
@@ -596,11 +626,12 @@ export default function CollectionScreen({
         <TouchableOpacity
           style={[
             styles.incidentBtn,
-            !isFormComplete && { opacity: 0.5 }
+            !isFormComplete && { opacity: 0.6 }
           ]}
           onPress={handleOpenIncident}
+          activeOpacity={0.8}
         >
-          <AlertTriangle size={20} color="#fff" strokeWidth={2.5} style={{ marginRight: 8 }} />
+          <AlertTriangle size={20} color="#ffffff" strokeWidth={2.5} style={{ marginRight: 8 }} />
           <Text style={styles.incidentText}>REPORTAR INCIDENCIA</Text>
         </TouchableOpacity>
 
@@ -609,24 +640,26 @@ export default function CollectionScreen({
           style={[styles.nextBtn, submitting && styles.btnDisabled]}
           onPress={handleSubmit}
           disabled={submitting}
+          activeOpacity={0.8}
         >
           {submitting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color="#ffffff" />
           ) : (
-            <Text style={styles.nextText}>SIGUIENTE {"\u2192"}</Text>
+            <Text style={styles.nextText}>ENVIAR REPORTE</Text>
           )}
         </TouchableOpacity>
 
-        <View style={{ height: 20 }} />
+        <View style={{ height: 40 }} />
       </ScrollView>
 
+      {/* Tab Bar conservado de tu versión original */}
       <View style={styles.tabBar}>
-        <TouchableOpacity style={[styles.tabItem, styles.tabActive]}>
-          <ScanLine size={20} color="#fff" strokeWidth={2.5} />
+        <TouchableOpacity style={[styles.tabItem, styles.tabActive]} activeOpacity={1}>
+          <ScanLine size={22} color="#ffffff" strokeWidth={2.5} />
           <Text style={styles.tabTextActive}>ESCANEAR</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={onSwitchToHistory}>
-          <RotateCcw size={20} color="#000" strokeWidth={2.5} />
+        <TouchableOpacity style={styles.tabItem} onPress={onSwitchToHistory} activeOpacity={0.7}>
+          <RotateCcw size={22} color="#000000" strokeWidth={2.5} />
           <Text style={styles.tabText}>HISTORIAL</Text>
         </TouchableOpacity>
       </View>
@@ -657,39 +690,53 @@ export default function CollectionScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#e8e6f5",
+    backgroundColor: "#f8fafc", // Blanquito
   },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#e8e6f5",
+    backgroundColor: "#f8fafc",
   },
   loadingText: {
-    marginTop: 10,
-    color: "#666",
+    marginTop: 12,
+    color: "#64748b",
+    fontSize: 15,
+    fontWeight: "500",
   },
   header: {
     backgroundColor: "#ffffff",
-    paddingTop: 50,
+    paddingTop: Platform.OS === 'ios' ? 50 : 40,
     paddingBottom: 16,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottomWidth: 1,
-    borderBottomColor: "#000",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 10,
+  },
+  backButton: {
+    padding: 4,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#000",
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1e293b",
     flex: 1,
-    marginLeft: 12,
+    textAlign: "center",
+    letterSpacing: 0.5,
   },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "#f1f5f9",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   statusDot: {
     width: 8,
@@ -698,104 +745,105 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: "#000",
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#475569",
     letterSpacing: 0.5,
   },
   scrollContent: {
     flex: 1,
-    padding: 16,
+    padding: 20,
   },
   mainTitle: {
-    fontSize: 30,
-    fontWeight: "bold",
-    color: "#000",
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#0f172a",
     marginBottom: 20,
+    letterSpacing: -0.5,
   },
   cardBox: {
     backgroundColor: "#ffffff",
-    borderWidth: 3,
-    borderColor: "#000",
-    borderRadius: 6,
-    padding: 16,
-    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
   },
   cardTitle: {
-    fontSize: 18,
-    color: "#000",
-    textAlign: "center",
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#0f172a",
     marginBottom: 4,
   },
   cardHint: {
-    fontSize: 12,
-    color: "#6b7280",
-    textAlign: "center",
-    marginBottom: 12,
-    fontStyle: "italic",
+    fontSize: 13,
+    color: "#64748b",
+    marginBottom: 16,
   },
   weighDecisionRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 12,
-    marginBottom: 12,
   },
   weighBtn: {
     flex: 1,
-    padding: 18,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: "#000",
+    paddingVertical: 14,
+    borderRadius: 10,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  weighBtnInactive: {
+    backgroundColor: "#f1f5f9",
+    borderColor: "#e2e8f0",
+    borderWidth: 1,
   },
   weighBtnYes: {
-    backgroundColor: "#10b981",
+    backgroundColor: "#2563eb",
   },
   weighBtnNo: {
-    backgroundColor: "#6b7280",
-  },
-  weighBtnSelected: {
-    borderWidth: 4,
-    borderColor: "#1e40af",
+    backgroundColor: "#64748b",
   },
   weighBtnText: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "bold",
-    letterSpacing: 1,
+    color: "#64748b",
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
   weightInputContainer: {
-    marginTop: 8,
+    marginTop: 20,
   },
   weightInputLabel: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#000",
-    marginBottom: 6,
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#334155",
+    marginBottom: 8,
   },
   weightInput: {
-    backgroundColor: "#f3f4f6",
-    borderWidth: 2,
-    borderColor: "#000",
-    borderRadius: 6,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    borderRadius: 10,
     padding: 14,
-    fontSize: 24,
-    color: "#000",
-    fontWeight: "bold",
+    fontSize: 20,
+    color: "#0f172a",
+    fontWeight: "700",
     textAlign: "center",
   },
   warningBox: {
     backgroundColor: "#fef2f2",
-    borderWidth: 1,
-    borderColor: "#dc2626",
-    borderRadius: 4,
-    padding: 8,
-    marginTop: 10,
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 12,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
   },
   warningText: {
     color: "#dc2626",
@@ -803,24 +851,29 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     flex: 1,
   },
+  successBox: {
+    backgroundColor: "#ecfdf5",
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 12,
+    alignItems: "center",
+  },
   netWeightHint: {
     color: "#059669",
     fontSize: 13,
-    fontWeight: "600",
-    textAlign: "center",
-    marginTop: 10,
+    fontWeight: "700",
   },
   noWeighInfo: {
-    backgroundColor: "#f3f4f6",
-    borderRadius: 4,
-    padding: 10,
-    marginTop: 8,
+    backgroundColor: "#f1f5f9",
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 16,
   },
   noWeighText: {
-    color: "#6b7280",
+    color: "#475569",
     fontSize: 13,
     textAlign: "center",
-    fontStyle: "italic",
+    fontWeight: "500",
   },
   fillLevelRow: {
     flexDirection: "row",
@@ -830,145 +883,146 @@ const styles = StyleSheet.create({
   fillBox: {
     flex: 1,
     height: 70,
-    marginHorizontal: 2,
+    marginHorizontal: 3,
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: "#000",
+    borderRadius: 10,
+    borderWidth: 3,
+    borderColor: "transparent",
   },
-  fillBoxSelected: {
-    borderWidth: 4,
-    borderColor: "#1e40af",
+  boxSelected: {
+    borderColor: "#1e293b", // Borde oscuro elegante para estados seleccionados
   },
   fillNumber: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 22,
+    color: "#ffffff",
+    fontWeight: "800",
+    fontSize: 20,
   },
   fillLabel: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "600",
+    color: "#ffffff",
+    fontSize: 10,
+    fontWeight: "700",
     marginTop: 2,
   },
   desbordadoBtn: {
-    backgroundColor: "#dc2626",
-    padding: 16,
-    borderRadius: 4,
+    backgroundColor: "#ef4444",
+    paddingVertical: 14,
+    borderRadius: 10,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#000",
-  },
-  desbordadoBtnSelected: {
-    borderWidth: 4,
-    borderColor: "#1e40af",
+    borderWidth: 3,
+    borderColor: "transparent",
   },
   desbordadoText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 0.5,
   },
   conditionBtn: {
-    padding: 16,
-    borderRadius: 4,
-    marginBottom: 8,
-    borderWidth: 2,
-    borderColor: "#000",
-  },
-  conditionBtnSelected: {
-    borderWidth: 4,
-    borderColor: "#1e40af",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginBottom: 10,
+    borderWidth: 3,
+    borderColor: "transparent",
   },
   conditionText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "700",
   },
   separationBtn: {
-    padding: 14,
-    borderRadius: 4,
-    marginBottom: 8,
-    borderWidth: 2,
-    borderColor: "#000",
-  },
-  separationBtnSelected: {
-    borderWidth: 4,
-    borderColor: "#1e40af",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginBottom: 10,
+    borderWidth: 3,
+    borderColor: "transparent",
   },
   separationTitle: {
-    color: "#fff",
+    color: "#ffffff",
     fontSize: 15,
-    fontWeight: "bold",
+    fontWeight: "700",
   },
   separationDesc: {
-    color: "#fff",
-    fontSize: 11,
+    color: "#ffffff",
+    fontSize: 12,
     marginTop: 2,
+    opacity: 0.9,
   },
   incidentBtn: {
-    backgroundColor: "#dc2626",
-    padding: 18,
-    borderRadius: 4,
+    backgroundColor: "#ef4444",
+    paddingVertical: 16,
+    borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: "#000",
+    marginBottom: 16,
+    shadowColor: "#ef4444",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   incidentText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "800",
     letterSpacing: 0.5,
   },
   nextBtn: {
-    backgroundColor: "#1e3a8a",
-    padding: 18,
-    borderRadius: 4,
+    backgroundColor: "#2563eb",
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#000",
+    shadowColor: "#2563eb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   btnDisabled: {
     opacity: 0.6,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   nextText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-    letterSpacing: 0.5,
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 1,
   },
+  // Tab Bar original conservado
   tabBar: {
     flexDirection: "row",
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#000",
+    backgroundColor: "#ffffff",
+    borderTopWidth: 2,
+    borderTopColor: "#000000",
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
   },
   tabItem: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
   tabActive: {
-    backgroundColor: "#000",
+    backgroundColor: "#000000",
   },
   tabText: {
-    fontSize: 11,
-    fontWeight: "bold",
-    color: "#000",
-    marginTop: 4,
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#000000",
+    marginTop: 6,
     letterSpacing: 0.5,
   },
   tabTextActive: {
-    fontSize: 11,
-    fontWeight: "bold",
-    color: "#fff",
-    marginTop: 4,
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#ffffff",
+    marginTop: 6,
     letterSpacing: 0.5,
   },
 });

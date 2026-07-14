@@ -5,6 +5,7 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Platform,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -17,8 +18,15 @@ import {
   Check,
 } from "lucide-react-native";
 
+interface User {
+  id?: string;
+  fullName: string;
+  employeeId?: string;
+  role?: string;
+}
+
 interface WelcomeScreenProps {
-  user: any;
+  user: User;
   onContinue: () => void;
 }
 
@@ -35,35 +43,35 @@ export default function WelcomeScreen({ user, onContinue }: WelcomeScreenProps) 
   const protocols = [
     {
       Icon: ClipboardList,
-      iconColor: "#1e40af",
+      iconColor: "#2563eb", // Azul profesional
       title: "Registro Obligatorio",
       description:
         "Realice el llenado obligatorio al momento de iniciar la recolección en cada sector.",
-      accentColor: "#1e40af",
+      accentColor: "#2563eb",
     },
     {
       Icon: BarChart3,
-      iconColor: "#1e40af",
+      iconColor: "#2563eb",
       title: "Datos Numéricos",
       description:
         "Asegúrese de ingresar únicamente valores numéricos en los campos de peso (kg).",
-      accentColor: "#1e40af",
+      accentColor: "#2563eb",
     },
     {
       Icon: AlertTriangle,
-      iconColor: "#dc2626",
+      iconColor: "#ef4444", // Rojo de alerta mantenido por UX
       title: "Control de Residuos",
       description:
-        "En caso de detectar una mala separación en la fuente, registrelo de inmediato en el apartado de incidencias.",
-      accentColor: "#dc2626",
+        "En caso de detectar una mala separación en la fuente, repórtelo de inmediato en incidencias.",
+      accentColor: "#ef4444",
     },
     {
       Icon: Camera,
-      iconColor: "#1e40af",
+      iconColor: "#2563eb",
       title: "Evidencia Fotográfica",
       description:
-        "Es de carácter necesario adjuntar una foto de evidencia del contenedor en la sección de reportar incidencia.",
-      accentColor: "#1e40af",
+        "Es obligatorio adjuntar una fotografía clara del contenedor al registrar cualquier incidencia.",
+      accentColor: "#2563eb",
     },
   ];
 
@@ -74,64 +82,18 @@ export default function WelcomeScreen({ user, onContinue }: WelcomeScreenProps) 
         contentContainerStyle={styles.scrollInner}
         showsVerticalScrollIndicator={false}
       >
-        {/* Logo */}
-        <View style={styles.logoContainer}>
+        {/* Encabezado */}
+        <View style={styles.headerContainer}>
           <View style={styles.logoBox}>
-            <Leaf size={32} color="#10b981" strokeWidth={2.5} />
+            <Leaf size={32} color="#2563eb" strokeWidth={2.5} />
           </View>
+          <Text style={styles.title}>Bienvenido, Operador</Text>
+          <Text style={styles.subtitle}>
+            Prepare su equipo y siga los protocolos de seguridad y registro de EcoCampus.
+          </Text>
         </View>
 
-        {/* Título */}
-        <Text style={styles.title}>Bienvenido, Operador</Text>
-        <Text style={styles.subtitle}>
-          Prepare su equipo y siga los protocolos de recolección de EcoCampus
-        </Text>
-
-        {/* Protocolos */}
-        {protocols.map((protocol, index) => {
-          const IconComponent = protocol.Icon;
-          return (
-            <View key={index} style={styles.protocolCard}>
-              <View
-                style={[
-                  styles.protocolAccent,
-                  { backgroundColor: protocol.accentColor },
-                ]}
-              />
-              <View style={styles.protocolContent}>
-                <View style={styles.protocolHeader}>
-                  <View style={styles.iconWrapper}>
-                    <IconComponent size={22} color={protocol.iconColor} strokeWidth={2} />
-                  </View>
-                  <Text style={styles.protocolTitle}>{protocol.title}</Text>
-                </View>
-                <Text style={styles.protocolDescription}>
-                  {protocol.description}
-                </Text>
-              </View>
-            </View>
-          );
-        })}
-
-        {/* Checkbox no mostrar */}
-        <TouchableOpacity
-          style={styles.checkboxRow}
-          onPress={() => setDoNotShowAgain(!doNotShowAgain)}
-        >
-          <View
-            style={[
-              styles.checkbox,
-              doNotShowAgain && styles.checkboxChecked,
-            ]}
-          >
-            {doNotShowAgain && <Check size={14} color="#fff" strokeWidth={3} />}
-          </View>
-          <Text style={styles.checkboxLabel}>
-            No volver a mostrar este mensaje
-          </Text>
-        </TouchableOpacity>
-
-        {/* Operador activo */}
+        {/* Tarjeta del Operador */}
         <View style={styles.operatorCard}>
           <View style={styles.operatorAvatar}>
             <Text style={styles.operatorAvatarText}>
@@ -141,18 +103,69 @@ export default function WelcomeScreen({ user, onContinue }: WelcomeScreenProps) 
           <View style={styles.operatorInfo}>
             <Text style={styles.operatorLabel}>OPERADOR ACTIVO</Text>
             <Text style={styles.operatorName}>
-              {user?.fullName || "Sin nombre"}
+              {user?.fullName || "Sin nombre registrado"}
             </Text>
           </View>
         </View>
 
-        {/* Botón Siguiente */}
-        <TouchableOpacity style={styles.nextBtn} onPress={handleContinue}>
-          <Text style={styles.nextBtnText}>Siguiente</Text>
-          <ChevronRight size={20} color="#fff" strokeWidth={2.5} style={{ marginLeft: 4 }} />
+        {/* Lista de Protocolos */}
+        <View style={styles.protocolsContainer}>
+          {protocols.map((protocol, index) => {
+            const IconComponent = protocol.Icon;
+            return (
+              <View key={index} style={styles.protocolCard}>
+                <View
+                  style={[
+                    styles.protocolAccent,
+                    { backgroundColor: protocol.accentColor },
+                  ]}
+                />
+                <View style={styles.protocolContent}>
+                  <View style={styles.protocolHeader}>
+                    <View style={styles.iconWrapper}>
+                      <IconComponent size={22} color={protocol.iconColor} strokeWidth={2} />
+                    </View>
+                    <Text style={styles.protocolTitle}>{protocol.title}</Text>
+                  </View>
+                  <Text style={styles.protocolDescription}>
+                    {protocol.description}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Checkbox No Mostrar */}
+        <TouchableOpacity
+          style={styles.checkboxRow}
+          onPress={() => setDoNotShowAgain(!doNotShowAgain)}
+          activeOpacity={0.7}
+        >
+          <View
+            style={[
+              styles.checkbox,
+              doNotShowAgain && styles.checkboxChecked,
+            ]}
+          >
+            {doNotShowAgain && <Check size={16} color="#ffffff" strokeWidth={3} />}
+          </View>
+          <Text style={styles.checkboxLabel}>
+            Comprendo los protocolos. No volver a mostrar.
+          </Text>
         </TouchableOpacity>
 
-        <View style={{ height: 20 }} />
+        {/* Botón Principal */}
+        <TouchableOpacity 
+          style={styles.buttonPrimary} 
+          onPress={handleContinue}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.buttonText}>COMENZAR TURNO</Text>
+          <ChevronRight size={20} color="#ffffff" strokeWidth={2.5} style={{ marginLeft: 8 }} />
+        </TouchableOpacity>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
@@ -161,142 +174,69 @@ export default function WelcomeScreen({ user, onContinue }: WelcomeScreenProps) 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f8fafc",
   },
   scrollContent: {
     flex: 1,
   },
   scrollInner: {
-    padding: 20,
-    paddingTop: 60,
+    padding: 24,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
-  logoContainer: {
+  headerContainer: {
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 32,
   },
   logoBox: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    backgroundColor: "#dbeafe",
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: "#eff6ff", // Fondo azul claro
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#93c5fd",
-  },
-  logoIcon: {
-    fontSize: 32,
+    marginBottom: 16,
   },
   title: {
     fontSize: 28,
-    fontWeight: "bold",
-    color: "#000",
+    fontWeight: "800",
+    color: "#0f172a",
     textAlign: "center",
-    marginBottom: 10,
+    letterSpacing: -0.5,
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: 13,
-    color: "#6b7280",
+    fontSize: 15,
+    color: "#64748b",
     textAlign: "center",
-    marginBottom: 28,
-    lineHeight: 19,
-  },
-  protocolCard: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    marginBottom: 14,
-    overflow: "hidden",
-    elevation: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-  },
-  protocolAccent: {
-    width: 4,
-  },
-  protocolContent: {
-    flex: 1,
-    padding: 14,
-  },
-  protocolHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-  iconWrapper: {
-    marginRight: 10,
-    width: 28,
-    height: 28,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  protocolTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#000",
-    flex: 1,
-  },
-  protocolDescription: {
-    fontSize: 12,
-    color: "#6b7280",
-    lineHeight: 17,
-  },
-  checkboxRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 20,
-    paddingVertical: 4,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderWidth: 2,
-    borderColor: "#9ca3af",
-    borderRadius: 4,
-    marginRight: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#fff",
-  },
-  checkboxChecked: {
-    backgroundColor: "#1e3a8a",
-    borderColor: "#1e3a8a",
-  },
-  checkmark: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  checkboxLabel: {
-    fontSize: 13,
-    color: "#374151",
+    lineHeight: 22,
+    fontWeight: "500",
   },
   operatorCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    padding: 14,
-    marginBottom: 20,
-    elevation: 1,
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
   },
   operatorAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#10b981",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#1e293b", // Gris oscuro corporativo
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 16,
   },
   operatorAvatarText: {
-    color: "#fff",
+    color: "#ffffff",
     fontSize: 20,
     fontWeight: "bold",
   },
@@ -304,29 +244,106 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   operatorLabel: {
-    fontSize: 10,
-    fontWeight: "bold",
-    color: "#10b981",
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#64748b",
     letterSpacing: 0.5,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   operatorName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#000",
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0f172a",
   },
-  nextBtn: {
-    backgroundColor: "#10b981",
-    padding: 16,
-    borderRadius: 8,
-    alignItems: "center",
+  protocolsContainer: {
+    marginBottom: 8,
+  },
+  protocolCard: {
     flexDirection: "row",
-    justifyContent: "center",
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
   },
-  nextBtnText: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "bold",
-    letterSpacing: 0.3,
+  protocolAccent: {
+    width: 5,
+  },
+  protocolContent: {
+    flex: 1,
+    padding: 16,
+  },
+  protocolHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  iconWrapper: {
+    marginRight: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  protocolTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0f172a",
+    flex: 1,
+  },
+  protocolDescription: {
+    fontSize: 14,
+    color: "#475569",
+    lineHeight: 20,
+  },
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 24,
+    paddingVertical: 8,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderColor: "#cbd5e1",
+    borderRadius: 6,
+    marginRight: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+  },
+  checkboxChecked: {
+    backgroundColor: "#2563eb",
+    borderColor: "#2563eb",
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#475569",
+  },
+  buttonPrimary: {
+    backgroundColor: "#2563eb", // Azul principal
+    paddingVertical: 18,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    shadowColor: "#2563eb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  buttonText: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 0.5,
   },
 });

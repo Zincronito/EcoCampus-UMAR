@@ -649,60 +649,7 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card className="col-span-full">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-                  Evolución de Separación
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart
-                    data={analytics.separation.temporal}
-                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-
-                    <XAxis
-                      dataKey="date"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 12, fill: '#6b7280' }}
-                      tickMargin={10}
-                    />
-                    <YAxis
-                      domain={[0, 100]}
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 12, fill: '#6b7280' }}
-                      tickFormatter={(value) => `${value}%`}
-                    />
-                    <Tooltip
-                      cursor={{ stroke: '#9ca3af', strokeWidth: 1, strokeDasharray: '5 5' }}
-                      contentStyle={{
-                        borderRadius: '8px',
-                        border: '1px solid #e5e7eb',
-                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                      }}
-                      formatter={(value) => [`${value}%`, 'Separación Correcta']}
-                    />
-                    <Legend
-                      wrapperStyle={{ paddingTop: '20px' }}
-                      iconType="circle"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="correct_percentage"
-                      name="Separación Correcta"
-                      stroke="#10b981"
-                      strokeWidth={3}
-                      dot={{ r: 4, fill: '#10b981', strokeWidth: 0 }}
-                      activeDot={{ r: 6, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-gray-800 dark:text-gray-100">
@@ -792,6 +739,60 @@ export default function AnalyticsPage() {
                       ))}
                     </Bar>
                   </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card className="col-span-full">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+                  Evolución de Separación
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart
+                    data={analytics.separation.temporal}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+
+                    <XAxis
+                      dataKey="date"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      tickMargin={10}
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <Tooltip
+                      cursor={{ stroke: '#9ca3af', strokeWidth: 1, strokeDasharray: '5 5' }}
+                      contentStyle={{
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                      }}
+                      formatter={(value) => [`${value}%`, 'Separación Correcta']}
+                    />
+                    <Legend
+                      wrapperStyle={{ paddingTop: '20px' }}
+                      iconType="circle"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="correct_percentage"
+                      name="Separación Correcta"
+                      stroke="#10b981"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: '#10b981', strokeWidth: 0 }}
+                      activeDot={{ r: 6, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
+                    />
+                  </LineChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>

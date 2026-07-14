@@ -6,11 +6,41 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Platform,
 } from "react-native";
+import { ArrowLeft, AlertTriangle } from "lucide-react-native";
+
+interface Record {
+  created_at: string;
+  gross_weight: number | null;
+  net_weight: number | null;
+  is_weight_estimated: boolean;
+  fill_level: string;
+  physical_state: string;
+  condition: string;
+  separation_level: string;
+  container?: {
+    container_code: string;
+    tare_weight: number;
+  } | null;
+  category?: {
+    name: string;
+  } | null;
+  location?: {
+    name: string;
+    sector: string;
+    campus: string;
+  } | null;
+  incident?: {
+    description: string;
+    quick_tag: string;
+    status: string;
+  } | null;
+}
 
 interface RecordDetailModalProps {
   visible: boolean;
-  record: any;
+  record: Record | null;
   onClose: () => void;
 }
 
@@ -30,9 +60,6 @@ export default function RecordDetailModal({
     const minutes = date.getMinutes().toString().padStart(2, "0");
     return `${day}/${month}/${year} - ${hours}:${minutes}`;
   };
-  console.log("RECORD COMPLETO:", JSON.stringify(record, null, 2));
-  console.log("NET_WEIGHT:", record.net_weight);
-  console.log("IS_WEIGHT_ESTIMATED:", record.is_weight_estimated);
 
   const getFillLevelLabel = (level: string) => {
     const levelMap: { [key: string]: string } = {
@@ -53,6 +80,7 @@ export default function RecordDetailModal({
   };
 
   const getPhysicalStateLabel = (state: string) => {
+    if (!state) return "N/A";
     const labels: { [key: string]: string } = {
       buen_estado: "Buen estado",
       tapa_rota: "Tapa rota",
@@ -65,6 +93,7 @@ export default function RecordDetailModal({
   };
 
   const getConditionLabel = (condition: string) => {
+    if (!condition) return "N/A";
     const labels: { [key: string]: string } = {
       tapado: "Tapado",
       destapado: "Destapado",
@@ -83,7 +112,7 @@ export default function RecordDetailModal({
       "0": "Nivel 0 - Excelente",
       "1": "Nivel 1 - Aceptable",
       "2": "Nivel 2 - Deficiente",
-      "3": "Nivel 3 - Critico",
+      "3": "Nivel 3 - Crítico",
     };
     return labels[level] || level;
   };
@@ -91,35 +120,35 @@ export default function RecordDetailModal({
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.container}>
-        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.headerLeft}>
-            <Text style={styles.backArrow}>{"\u2190"}</Text>
-            <Text style={styles.headerTitle}>Detalle del Reporte</Text>
+          <TouchableOpacity onPress={onClose} style={styles.iconButton} activeOpacity={0.7}>
+            <ArrowLeft size={24} color="#1e293b" strokeWidth={2.5} />
           </TouchableOpacity>
+          <Text style={styles.headerTitle}>Detalle del Reporte</Text>
+          <View style={{ width: 32 }} />
         </View>
 
         <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* INFORMACION GENERAL */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>INFORMACION GENERAL</Text>
+            <Text style={styles.sectionTitle}>INFORMACIÓN GENERAL</Text>
             <View style={styles.card}>
               <View style={styles.row}>
                 <Text style={styles.label}>Contenedor:</Text>
-                <Text style={styles.value}>
-                  {record.container?.container_code || "N/A"}
+                <Text style={[styles.value, styles.codeText]}>
+                  {record.container?.container_code ? record.container.container_code : "N/A"}
                 </Text>
               </View>
               <View style={styles.row}>
-                <Text style={styles.label}>Categoria:</Text>
+                <Text style={styles.label}>Categoría:</Text>
                 <Text style={styles.value}>
-                  {record.category?.name || "N/A"}
+                  {record.category?.name ? record.category.name : "N/A"}
                 </Text>
               </View>
-              {record.location && (
-                <>
+              
+              {record.location ? (
+                <View>
                   <View style={styles.row}>
-                    <Text style={styles.label}>Ubicacion:</Text>
+                    <Text style={styles.label}>Ubicación:</Text>
                     <Text style={styles.value}>{record.location.name}</Text>
                   </View>
                   <View style={styles.row}>
@@ -130,80 +159,70 @@ export default function RecordDetailModal({
                     <Text style={styles.label}>Campus:</Text>
                     <Text style={styles.value}>{record.location.campus}</Text>
                   </View>
-                </>
-              )}
-              <View style={styles.row}>
+                </View>
+              ) : null}
+
+              <View style={[styles.row, styles.lastRow]}>
                 <Text style={styles.label}>Fecha:</Text>
                 <Text style={styles.value}>
-                  {formatFullDate(record.created_at)}
+                  {record.created_at ? formatFullDate(record.created_at) : "N/A"}
                 </Text>
               </View>
             </View>
           </View>
 
-          {/* MEDICIONES */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>MEDICIONES</Text>
+            <Text style={styles.sectionTitle}>MEDICIONES REGISTRADAS</Text>
             <View style={styles.card}>
               <View style={styles.row}>
                 <Text style={styles.label}>Peso bruto:</Text>
-                <Text style={[
-                  styles.value,
-                  record.gross_weight === null && styles.valueEmpty
-                ]}>
-                  {record.gross_weight !== null
-                    ? `${record.gross_weight.toFixed(1)} kg`
-                    : "No registrado"
-                  }
+                <Text style={[styles.value, record.gross_weight === null ? styles.valueEmpty : {}]}>
+                  {record.gross_weight !== null ? `${record.gross_weight.toFixed(2)} kg` : "No registrado"}
                 </Text>
               </View>
               <View style={styles.row}>
                 <Text style={styles.label}>Peso neto:</Text>
                 <View style={styles.weightContainer}>
-                  <Text style={[
-                    styles.value,
-                    !record.net_weight && styles.valueEmpty
-                  ]}>
-                    {record.net_weight ? `${record.net_weight.toFixed(2)} kg` : "No registrado"}
+                  <Text style={[styles.value, record.net_weight === null ? styles.valueEmpty : {}]}>
+                    {record.net_weight !== null ? `${record.net_weight.toFixed(2)} kg` : "No registrado"}
                   </Text>
-                  {record.is_weight_estimated && (
+                  {record.is_weight_estimated ? (
                     <Text style={styles.badgeEstimated}>Estimado</Text>
-                  )}
+                  ) : null}
                 </View>
               </View>
               <View style={styles.row}>
-                <Text style={styles.label}>Tara:</Text>
+                <Text style={styles.label}>Tara contenedor:</Text>
                 <Text style={styles.value}>
-                  {record.container?.tare_weight.toFixed(1) || "N/A"} kg
+                  {record.container?.tare_weight ? `${record.container.tare_weight.toFixed(2)} kg` : "N/A"}
                 </Text>
               </View>
-              <View style={styles.row}>
+              <View style={[styles.row, styles.lastRow]}>
                 <Text style={styles.label}>Nivel de llenado:</Text>
                 <Text style={styles.value}>
-                  {getFillLevelLabel(record.fill_level)}
+                  {record.fill_level ? getFillLevelLabel(record.fill_level) : "N/A"}
                 </Text>
               </View>
             </View>
           </View>
 
-          {/* ESTADO DEL CONTENEDOR */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>ESTADO DEL CONTENEDOR</Text>
+            <Text style={styles.sectionTitle}>ESTADO OPERATIVO</Text>
             <View style={styles.card}>
               <View style={styles.row}>
-                <Text style={styles.label}>Estado fisico:</Text>
+                <Text style={styles.label}>Estado físico:</Text>
                 <Text style={styles.value}>
                   {getPhysicalStateLabel(record.physical_state)}
                 </Text>
               </View>
               <View style={styles.row}>
-                <Text style={styles.label}>Condiciones:</Text>
+                <Text style={styles.label}>Condiciones entorno:</Text>
                 <Text style={styles.value}>
                   {getConditionLabel(record.condition)}
                 </Text>
               </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Separacion:</Text>
+              <View style={[styles.row, styles.lastRow]}>
+                <Text style={styles.label}>Separación en fuente:</Text>
                 <Text style={styles.value}>
                   {getSeparationLabel(record.separation_level)}
                 </Text>
@@ -211,60 +230,79 @@ export default function RecordDetailModal({
             </View>
           </View>
 
-          {/* INCIDENCIA (si aplica) */}
-          {record.incident && (
+          {record.incident ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                {"\u26A0"} INCIDENCIA REPORTADA
+              <Text style={[styles.sectionTitle, { color: "#dc2626" }]}>
+                INCIDENCIA REPORTADA
               </Text>
               <View style={[styles.card, styles.incidentCard]}>
+                <View style={styles.incidentHeader}>
+                  <AlertTriangle size={18} color="#dc2626" strokeWidth={2.5} style={{ marginRight: 8 }} />
+                  <Text style={styles.incidentTitle}>Detalle del Problema</Text>
+                </View>
+                
                 <View style={styles.row}>
-                  <Text style={styles.label}>Descripcion:</Text>
+                  <Text style={styles.label}>Descripción:</Text>
                   <Text style={styles.value}>
-                    {record.incident.description}
+                    {record.incident.description ? record.incident.description : "Sin descripción"}
                   </Text>
                 </View>
-                {record.incident.quick_tag && (
+                
+                {record.incident.quick_tag ? (
                   <View style={styles.row}>
-                    <Text style={styles.label}>Tipo:</Text>
+                    <Text style={styles.label}>Etiqueta rápida:</Text>
                     <Text style={styles.value}>{record.incident.quick_tag}</Text>
                   </View>
-                )}
-                <View style={styles.row}>
-                  <Text style={styles.label}>Estado:</Text>
+                ) : null}
+                
+                <View style={[styles.row, styles.lastRow]}>
+                  <Text style={styles.label}>Estado del ticket:</Text>
                   <View
                     style={[
                       styles.statusBadge,
                       {
                         backgroundColor:
                           record.incident.status === "open"
-                            ? "#ef4444"
+                            ? "#fee2e2"
                             : record.incident.status === "in_progress"
-                              ? "#f59e0b"
-                              : "#10b981",
+                            ? "#fef3c7"
+                            : "#dcfce7",
                       },
                     ]}
                   >
-                    <Text style={styles.statusText}>
+                    <Text
+                      style={[
+                        styles.statusText,
+                        {
+                          color:
+                            record.incident.status === "open"
+                              ? "#dc2626"
+                              : record.incident.status === "in_progress"
+                              ? "#d97706"
+                              : "#16a34a",
+                        },
+                      ]}
+                    >
                       {record.incident.status === "open"
                         ? "ABIERTA"
                         : record.incident.status === "in_progress"
-                          ? "EN PROCESO"
-                          : "RESUELTA"}
+                        ? "EN PROCESO"
+                        : "RESUELTA"}
                     </Text>
                   </View>
                 </View>
               </View>
             </View>
-          )}
+          ) : null}
 
-          <View style={{ height: 30 }} />
+          <View style={{ height: 40 }} />
         </ScrollView>
 
-        {/* Boton cerrar */}
-        <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-          <Text style={styles.closeBtnText}>CERRAR</Text>
-        </TouchableOpacity>
+        <View style={styles.footer}>
+          <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.8}>
+            <Text style={styles.closeBtnText}>CERRAR DETALLE</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </Modal>
   );
@@ -273,119 +311,164 @@ export default function RecordDetailModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#e8e6f5",
+    backgroundColor: "#f8fafc",
   },
   header: {
     backgroundColor: "#ffffff",
-    paddingTop: 50,
+    paddingTop: Platform.OS === "ios" ? 50 : 40,
     paddingBottom: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: "#000",
-  },
-  headerLeft: {
+    paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 10,
   },
-  backArrow: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#1e40af",
-    marginRight: 8,
+  iconButton: {
+    padding: 4,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#1e40af",
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1e293b",
+    flex: 1,
+    textAlign: "center",
+    letterSpacing: 0.5,
   },
   scrollContent: {
     flex: 1,
-    padding: 16,
+    padding: 20,
   },
   section: {
-    marginBottom: 16,
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: "bold",
-    color: "#000",
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#64748b",
     marginBottom: 8,
-    letterSpacing: 0.5,
+    letterSpacing: 1,
+    marginLeft: 4,
   },
   card: {
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: "#000",
-    borderRadius: 6,
-    padding: 14,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
   },
   incidentCard: {
-    backgroundColor: "#fef3c7",
-    borderColor: "#f59e0b",
+    backgroundColor: "#fff1f2",
+    borderColor: "#fecdd3",
+  },
+  incidentHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#fecdd3",
+  },
+  incidentTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#be123c",
   },
   row: {
     flexDirection: "row",
-    paddingVertical: 6,
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
+    borderBottomColor: "#f1f5f9",
+  },
+  lastRow: {
+    borderBottomWidth: 0,
+    paddingBottom: 4,
   },
   label: {
     fontSize: 13,
-    color: "#6b7280",
+    color: "#64748b",
     fontWeight: "600",
-    width: 130,
+    flex: 1,
   },
   value: {
-    fontSize: 13,
-    color: "#000",
+    fontSize: 14,
+    color: "#0f172a",
+    fontWeight: "600",
+    flex: 1.5,
+    textAlign: "right",
+  },
+  codeText: {
+    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
+    backgroundColor: "#f1f5f9",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  valueEmpty: {
+    color: "#94a3b8",
+    fontStyle: "italic",
     fontWeight: "500",
-    flex: 1,
+  },
+  weightContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    flex: 1.5,
+  },
+  badgeEstimated: {
+    backgroundColor: "#fef3c7",
+    color: "#d97706",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    fontSize: 10,
+    fontWeight: "800",
+    marginLeft: 8,
   },
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 4,
-    alignSelf: "flex-start",
+    borderRadius: 6,
   },
   statusText: {
     fontSize: 10,
-    fontWeight: "bold",
-    color: "#fff",
+    fontWeight: "800",
     letterSpacing: 0.5,
+  },
+  footer: {
+    backgroundColor: "#ffffff",
+    padding: 20,
+    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+    borderTopWidth: 1,
+    borderTopColor: "#e2e8f0",
   },
   closeBtn: {
-    backgroundColor: "#1e3a8a",
-    padding: 16,
-    margin: 16,
-    borderRadius: 6,
+    backgroundColor: "#2563eb",
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#000",
+    shadowColor: "#2563eb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   closeBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-    letterSpacing: 0.5,
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 1,
   },
-  valueEmpty: {
-    color: "#9ca3af",
-    fontStyle: "italic",
-  },
-  weightContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    flex:1,
-  },
-  badgeEstimated: {
-    backgroundColor: '#fbbf24',
-    color: '#92400e',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    fontSize: 10,
-    fontWeight: '600',
-    marginLeft: 8,  // ← Cambiar gap por marginLeft
-  }
 });

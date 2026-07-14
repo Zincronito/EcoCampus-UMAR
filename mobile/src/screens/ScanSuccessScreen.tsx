@@ -5,10 +5,10 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Platform,
 } from "react-native";
 import {
-  Menu,
-  User,
+  ArrowLeft,
   CheckCircle2,
   Trash2,
   ScanLine,
@@ -16,6 +16,7 @@ import {
   ChevronRight,
 } from "lucide-react-native";
 
+// Interfaz de tipado estricto intacta
 interface ScanSuccessScreenProps {
   container: {
     id: string;
@@ -30,7 +31,7 @@ interface ScanSuccessScreenProps {
     location?: {
       name: string;
       sector: string;
-      campus: {          // ✅ Ahora es objeto
+      campus: {
         id?: string;
         name: string;
         code: string;
@@ -59,9 +60,9 @@ export default function ScanSuccessScreen({
 
   const getStatusColor = (status: string) => {
     const colors: { [key: string]: string } = {
-      active: "#dcfce7",
-      inactive: "#fee2e2",
-      maintenance: "#fef3c7",
+      active: "#dcfce7", // Verde muy suave
+      inactive: "#fee2e2", // Rojo muy suave
+      maintenance: "#fef3c7", // Amarillo/Ambar muy suave
     };
     return colors[status] || "#f3f4f6";
   };
@@ -70,11 +71,11 @@ export default function ScanSuccessScreen({
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onCancel}>
-          <Menu size={24} color="#000" strokeWidth={2.5} />
+        <TouchableOpacity onPress={onCancel} style={styles.iconButton}>
+          <ArrowLeft size={24} color="#1e293b" strokeWidth={2.5} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>EcoCampus UMAR</Text>
-        <User size={24} color="#000" strokeWidth={2.5} />
+        <View style={{ width: 32 }} />
       </View>
 
       <ScrollView
@@ -85,7 +86,7 @@ export default function ScanSuccessScreen({
         {/* Icono de éxito */}
         <View style={styles.iconContainer}>
           <View style={styles.successIcon}>
-            <CheckCircle2 size={80} color="#fff" strokeWidth={2.5} />
+            <CheckCircle2 size={64} color="#ffffff" strokeWidth={2.5} />
           </View>
         </View>
 
@@ -95,8 +96,8 @@ export default function ScanSuccessScreen({
         {/* Card de contenedor detectado */}
         <View style={styles.containerCard}>
           <View style={styles.cardHeader}>
-            <Trash2 size={22} color="#1e40af" strokeWidth={2} style={{ marginRight: 8 }} />
-            <Text style={styles.cardTitle}>Contenedor Detectado</Text>
+            <Trash2 size={22} color="#1e3a8a" strokeWidth={2.5} style={{ marginRight: 8 }} />
+            <Text style={styles.cardTitle}>Datos del Contenedor</Text>
           </View>
 
           <View style={styles.cardDivider} />
@@ -104,21 +105,21 @@ export default function ScanSuccessScreen({
           {/* Datos del contenedor */}
           <View style={styles.dataRow}>
             <Text style={styles.dataLabel}>UBICACIÓN</Text>
-            <Text style={styles.dataValue}>
+            <Text style={styles.dataValue} numberOfLines={1}>
               {container.location?.name || "N/A"}
             </Text>
           </View>
 
           <View style={styles.dataRow}>
             <Text style={styles.dataLabel}>SECTOR</Text>
-            <Text style={styles.dataValue}>
+            <Text style={styles.dataValue} numberOfLines={1}>
               {container.location?.sector || "N/A"}
             </Text>
           </View>
 
           <View style={styles.dataRow}>
             <Text style={styles.dataLabel}>CAMPUS</Text>
-            <Text style={styles.dataValue}>
+            <Text style={styles.dataValue} numberOfLines={1}>
               {container.location?.campus?.name || "N/A"}
             </Text>
           </View>
@@ -139,7 +140,7 @@ export default function ScanSuccessScreen({
           </View>
 
           <View style={styles.dataRow}>
-            <Text style={styles.dataLabel}>ESTADO</Text>
+            <Text style={styles.dataLabel}>ESTADO ACTUAL</Text>
             <View
               style={[
                 styles.statusBadge,
@@ -153,14 +154,14 @@ export default function ScanSuccessScreen({
           </View>
 
           <View style={styles.dataRow}>
-            <Text style={styles.dataLabel}>PESO EN VACÍO</Text>
+            <Text style={styles.dataLabel}>PESO EN VACÍO (TARA)</Text>
             <Text style={styles.dataValue}>
               {container.tare_weight.toFixed(1)} kg
             </Text>
           </View>
 
-          <View style={styles.dataRow}>
-            <Text style={styles.dataLabel}>ID</Text>
+          <View style={[styles.dataRow, styles.lastDataRow]}>
+            <Text style={styles.dataLabel}>ID INTERNO</Text>
             <Text style={[styles.dataValue, styles.codeText]}>
               {container.container_code}
             </Text>
@@ -168,31 +169,30 @@ export default function ScanSuccessScreen({
         </View>
 
         <Text style={styles.infoMessage}>
-          El contenedor está listo para recibir tu reporte. Por favor, asegúrate
-          de cerrar la tapa al finalizar.
+          El contenedor ha sido identificado correctamente y está listo para recibir tu reporte de recolección.
         </Text>
 
         {/* Botones */}
-        <TouchableOpacity style={styles.continueBtn} onPress={onContinue}>
+        <TouchableOpacity style={styles.continueBtn} onPress={onContinue} activeOpacity={0.8}>
           <Text style={styles.continueBtnText}>CONTINUAR</Text>
-          <ChevronRight size={20} color="#fff" strokeWidth={2.5} style={{ marginLeft: 6 }} />
+          <ChevronRight size={20} color="#ffffff" strokeWidth={2.5} style={{ marginLeft: 6 }} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.cancelBtn} onPress={onCancel}>
-          <Text style={styles.cancelBtnText}>CANCELAR</Text>
+        <TouchableOpacity style={styles.cancelBtn} onPress={onCancel} activeOpacity={0.7}>
+          <Text style={styles.cancelBtnText}>CANCELAR OPERACIÓN</Text>
         </TouchableOpacity>
 
-        <View style={{ height: 20 }} />
+        <View style={{ height: 30 }} />
       </ScrollView>
 
-      {/* Tab Bar */}
+      {/* Tab Bar conservando tu diseño exacto */}
       <View style={styles.tabBar}>
-        <TouchableOpacity style={[styles.tabItem, styles.tabActive]}>
-          <ScanLine size={20} color="#fff" strokeWidth={2.5} />
+        <TouchableOpacity style={[styles.tabItem, styles.tabActive]} activeOpacity={1}>
+          <ScanLine size={22} color="#ffffff" strokeWidth={2.5} />
           <Text style={styles.tabTextActive}>ESCANEAR</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={onSwitchToHistory}>
-          <RotateCcw size={20} color="#000" strokeWidth={2.5} />
+        <TouchableOpacity style={styles.tabItem} onPress={onSwitchToHistory} activeOpacity={0.7}>
+          <RotateCcw size={22} color="#000000" strokeWidth={2.5} />
           <Text style={styles.tabText}>HISTORIAL</Text>
         </TouchableOpacity>
       </View>
@@ -203,192 +203,225 @@ export default function ScanSuccessScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#e8e6f5",
+    backgroundColor: "#f8fafc", // Fondo blanquito/gris claro
   },
   header: {
     backgroundColor: "#ffffff",
-    paddingTop: 50,
+    paddingTop: Platform.OS === 'ios' ? 50 : 40,
     paddingBottom: 16,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottomWidth: 2,
-    borderBottomColor: "#000",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3, // Sombra sutil en lugar de borde negro
+  },
+  iconButton: {
+    padding: 4,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#000",
-    flex: 1,
+    fontSize: 18, // Letra más grande
+    fontWeight: "800",
+    color: "#0f172a",
     textAlign: "center",
+    letterSpacing: 0.5,
   },
   scrollContent: {
     flex: 1,
   },
   scrollInner: {
     padding: 20,
-    paddingTop: 30,
+    paddingTop: 32,
   },
   iconContainer: {
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 20,
   },
   successIcon: {
-    width: 110,
-    height: 110,
+    width: 90,
+    height: 90,
     backgroundColor: "#22c55e",
-    borderRadius: 12,
+    borderRadius: 45,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#000",
+    // Se eliminó el borde negro
+    shadowColor: "#22c55e",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#000",
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#000000",
     textAlign: "center",
     marginBottom: 24,
+    letterSpacing: -0.5,
   },
   containerCard: {
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: "#000",
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "#e2e8f0", // Borde gris muy sutil
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 3,
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 16,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#000",
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#000000",
   },
   cardDivider: {
     height: 1,
-    backgroundColor: "#d1d5db",
-    marginBottom: 12,
+    backgroundColor: "#e5e7eb",
+    marginBottom: 8,
   },
   dataRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#f3f4f6",
   },
+  lastDataRow: {
+    borderBottomWidth: 0,
+    paddingBottom: 4,
+  },
   dataLabel: {
-    fontSize: 12,
-    fontWeight: "bold",
+    fontSize: 11,
+    fontWeight: "700",
     color: "#6b7280",
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
     flex: 1,
   },
   dataValue: {
     fontSize: 14,
-    color: "#000",
-    fontWeight: "600",
+    color: "#000000",
+    fontWeight: "700",
     textAlign: "right",
+    flex: 1.5,
   },
   codeText: {
-    fontFamily: "monospace",
+    fontFamily: Platform.OS === 'ios' ? "Courier" : "monospace",
+    backgroundColor: "#f3f4f6",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   categoryRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "flex-end",
+    flex: 1.5,
   },
   colorDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     marginRight: 8,
-    borderWidth: 1,
-    borderColor: "#000",
+    borderWidth: 1.5,
+    borderColor: "#000000",
   },
   statusBadge: {
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: "#000",
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: "#000000",
   },
   statusText: {
-    fontSize: 11,
-    fontWeight: "bold",
-    color: "#000",
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#000000",
     letterSpacing: 0.5,
   },
   infoMessage: {
-    fontSize: 13,
-    color: "#6b7280",
+    fontSize: 14,
+    color: "#4b5563",
     textAlign: "center",
-    marginBottom: 20,
-    lineHeight: 19,
-    paddingHorizontal: 10,
+    marginBottom: 24,
+    lineHeight: 22,
+    paddingHorizontal: 12,
+    fontWeight: "500",
   },
   continueBtn: {
-    backgroundColor: "#1e3a8a",
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: "#2563eb", // Azul moderno del escáner
+    paddingVertical: 16,
+    borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#000",
-    marginBottom: 10,
+    marginBottom: 16,
+    shadowColor: "#2563eb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   continueBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-    letterSpacing: 0.5,
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 1,
   },
   cancelBtn: {
-    backgroundColor: "#fff",
-    padding: 14,
-    borderRadius: 8,
+    backgroundColor: "#f1f5f9", // Gris muy clarito
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#000",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
   },
   cancelBtnText: {
-    color: "#000",
+    color: "#475569", // Texto gris oscuro elegante
     fontSize: 14,
-    fontWeight: "bold",
+    fontWeight: "800",
     letterSpacing: 0.5,
   },
   tabBar: {
     flexDirection: "row",
-    backgroundColor: "#fff",
+    backgroundColor: "#ffffff",
     borderTopWidth: 2,
-    borderTopColor: "#000",
+    borderTopColor: "#000000",
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0, // Ajuste para el safe area de iOS
   },
   tabItem: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
   tabActive: {
-    backgroundColor: "#000",
+    backgroundColor: "#000000",
   },
   tabText: {
-    fontSize: 11,
-    fontWeight: "bold",
-    color: "#000",
-    marginTop: 4,
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#000000",
+    marginTop: 6,
     letterSpacing: 0.5,
   },
   tabTextActive: {
-    fontSize: 11,
-    fontWeight: "bold",
-    color: "#fff",
-    marginTop: 4,
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#ffffff",
+    marginTop: 6,
     letterSpacing: 0.5,
   },
 });

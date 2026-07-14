@@ -11,6 +11,8 @@ import {
   TextInput,
   Image,
   Animated,
+  Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import {
@@ -19,6 +21,8 @@ import {
   Mic,
   X,
   Send,
+  ScanLine,
+  RotateCcw,
 } from "lucide-react-native";
 import {
   ExpoSpeechRecognitionModule,
@@ -59,11 +63,11 @@ export default function IncidentReportModal({
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
 
-  // Animacion del microfono
+  // Animación del micrófono
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const quickTags = [
-    { id: "escombros", label: "Escombros mezclados", color: "#fff" },
+    { id: "escombros", label: "Escombros mezclados", color: "#f1f5f9" },
     { id: "bolsas", label: "Bolsas mal cerradas", color: "#dbeafe" },
     { id: "organicos", label: "Orgánicos en plásticos", color: "#bbf7d0" },
     { id: "vidrio", label: "Vidrio roto", color: "#fecaca" },
@@ -82,7 +86,6 @@ export default function IncidentReportModal({
 
   useSpeechRecognitionEvent("result", (event) => {
     const text = event.results[0]?.transcript;
-
     if (text) {
       setDescription(text);
     }
@@ -99,7 +102,7 @@ export default function IncidentReportModal({
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.2,
+          toValue: 1.15,
           duration: 600,
           useNativeDriver: true,
         }),
@@ -119,13 +122,11 @@ export default function IncidentReportModal({
 
   const handleVoicePress = async () => {
     if (isListening) {
-      // Si esta escuchando, detener
       ExpoSpeechRecognitionModule.stop();
       return;
     }
 
     try {
-      // Pedir permisos
       const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
       if (!result.granted) {
         Alert.alert(
@@ -135,7 +136,6 @@ export default function IncidentReportModal({
         return;
       }
 
-      // Iniciar reconocimiento
       ExpoSpeechRecognitionModule.start({
         lang: "es-MX",
         interimResults: true,
@@ -197,20 +197,17 @@ export default function IncidentReportModal({
 
   const handleSendIncident = async () => {
     if (!description.trim()) {
-      Alert.alert("Error", "Escribe una descripción para la incidencia");
+      Alert.alert("Dato requerido", "Por favor escribe una descripción para la incidencia.");
       return;
     }
 
     try {
       setSubmitting(true);
 
-      // PASO 1: Subir foto a MinIO si existe
       let photoUrl: string | null = null;
       if (photoUri) {
         try {
-          console.log("Subiendo foto...");
           photoUrl = await fileService.uploadIncidentPhoto(photoUri);
-          console.log("Foto subida:", photoUrl);
         } catch (photoError: any) {
           Alert.alert("Error", "No se pudo subir la foto: " + photoError.message);
           setSubmitting(false);
@@ -218,7 +215,6 @@ export default function IncidentReportModal({
         }
       }
 
-      // PASO 2: Crear registro de recolección
       const recordPayload = {
         gross_weight: formData.gross_weight > 0 ? formData.gross_weight : null,
         net_weight: formData.net_weight > 0 ? formData.net_weight : null,
@@ -231,15 +227,14 @@ export default function IncidentReportModal({
       };
 
       const containerData = await containerService.getById(containerId);
-      const categoryName = containerData?.waste_category?.name || "Sin categoria";
+      const categoryName = containerData?.waste_category?.name || "Sin categoría";
 
       const savedRecord = await recordService.create(recordPayload as any);
 
-      // PASO 3: Crear incidencia CON la URL de la foto
       const incidentPayload = {
         description: description.trim(),
         quick_tag: description,
-        photo_url: photoUrl, // ← USAR URL DE MINÍO
+        photo_url: photoUrl,
         container_id: containerId,
         reported_by_id: collectorId,
         collection_record_id: savedRecord.id,
@@ -247,23 +242,21 @@ export default function IncidentReportModal({
 
       await incidentService.create(incidentPayload as any);
 
-      // PASO 4: Limpiar y cerrar
       setDescription("");
       setPhotoUri(null);
       onClose();
 
-      // Navegar a pantalla de éxito
       onSubmitSuccess({
         container_code: containerCode,
         category_name: categoryName,
         weight: formData.net_weight,
         weight_recorded: formData.gross_weight > 0,
         has_incident: true,
-        photo_url: photoUrl, // ← AGREGAR FOTO A RESPUESTA
+        photo_url: photoUrl,
         timestamp: new Date().toISOString(),
       });
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Error al guardar");
+      Alert.alert("Error", error.message || "Error al guardar el reporte");
     } finally {
       setSubmitting(false);
     }
@@ -271,32 +264,38 @@ export default function IncidentReportModal({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.container}>
-        {/* Header */}
+      <KeyboardAvoidingView 
+        style={styles.container} 
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        {/* Header Moderno */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.headerLeft}>
-            <ArrowLeft size={22} color="#1e40af" strokeWidth={2.5} style={{ marginRight: 8 }} />
+          <TouchableOpacity onPress={onClose} style={styles.headerLeft} activeOpacity={0.7}>
+            <ArrowLeft size={24} color="#1e293b" strokeWidth={2.5} style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Reportar Incidencia</Text>
           </TouchableOpacity>
-          <Text style={styles.statusText}>EN LINEA</Text>
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusText}>EN LÍNEA</Text>
+          </View>
         </View>
 
         <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <Text style={styles.mainTitle}>Rellene los campos</Text>
+          <Text style={styles.mainTitle}>Rellene los campos requeridos</Text>
 
           {/* EVIDENCIA Y REPORTE */}
-          <Text style={styles.sectionTitle}>Evidencia y Reporte</Text>
+          <Text style={styles.sectionTitle}>EVIDENCIA VISUAL Y AUDIO</Text>
           <View style={styles.evidenceRow}>
             <TouchableOpacity
               style={[styles.photoBox, photoUri && styles.photoBoxWithImage]}
               onPress={handleTakePhoto}
+              activeOpacity={0.8}
             >
               {photoUri ? (
                 <Image source={{ uri: photoUri }} style={styles.photoPreview} />
               ) : (
                 <>
-                  <Camera size={38} color="#000" strokeWidth={2} style={{ marginBottom: 6 }} />
-                  <Text style={styles.evidenceLabel}>FOTO</Text>
+                  <Camera size={34} color="#64748b" strokeWidth={2} style={{ marginBottom: 8 }} />
+                  <Text style={styles.evidenceLabel}>TOMAR FOTO</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -304,37 +303,39 @@ export default function IncidentReportModal({
             <TouchableOpacity
               style={[styles.voiceBox, isListening && styles.voiceBoxActive]}
               onPress={handleVoicePress}
+              activeOpacity={0.8}
             >
-              <Animated.View style={{ transform: [{ scale: pulseAnim }], marginBottom: 6 }}>
-                <Mic size={38} color="#fff" strokeWidth={2} />
+              <Animated.View style={{ transform: [{ scale: pulseAnim }], marginBottom: 8 }}>
+                <Mic size={34} color="#ffffff" strokeWidth={2.5} />
               </Animated.View>
-              <Text style={[styles.evidenceLabel, { color: "#fff" }]}>
-                {isListening ? "ESCUCHANDO..." : "VOZ"}
+              <Text style={styles.voiceLabel}>
+                {isListening ? "ESCUCHANDO..." : "DICTAR POR VOZ"}
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* Boton eliminar foto */}
+          {/* Botón eliminar foto */}
           {photoUri && (
             <TouchableOpacity
               style={styles.removePhotoBtn}
               onPress={handleRemovePhoto}
+              activeOpacity={0.7}
             >
-              <X size={14} color="#dc2626" strokeWidth={2.5} style={{ marginRight: 6 }} />
-              <Text style={styles.removePhotoText}>Eliminar foto</Text>
+              <X size={14} color="#dc2626" strokeWidth={3} style={{ marginRight: 6 }} />
+              <Text style={styles.removePhotoText}>Eliminar fotografía</Text>
             </TouchableOpacity>
           )}
 
           {/* DESCRIPCION DETALLADA */}
-          <Text style={styles.sectionTitle}>Descripción Detallada</Text>
+          <Text style={styles.sectionTitle}>DESCRIPCIÓN DETALLADA</Text>
           <View style={styles.textInputContainer}>
             <TextInput
               style={[
                 styles.textInput,
                 isListening && styles.textInputListening,
               ]}
-              placeholder="Añade más detalles sobre la incidencia..."
-              placeholderTextColor="#9ca3af"
+              placeholder="Escriba o dicte los detalles de la incidencia..."
+              placeholderTextColor="#94a3b8"
               multiline
               numberOfLines={4}
               value={description}
@@ -349,8 +350,8 @@ export default function IncidentReportModal({
             )}
           </View>
 
-          {/* SUGERENCIAS RAPIDAS */}
-          <Text style={styles.sectionTitle}>Sugerencias Rápidas</Text>
+          {/* SUGERENCIAS RÁPIDAS */}
+          <Text style={styles.sectionTitle}>ETIQUETAS RÁPIDAS</Text>
           <View style={styles.tagsGrid}>
             {quickTags.map((tag) => (
               <TouchableOpacity
@@ -361,8 +362,14 @@ export default function IncidentReportModal({
                   description === tag.label && styles.tagBtnSelected,
                 ]}
                 onPress={() => handleQuickTag(tag.label)}
+                activeOpacity={0.7}
               >
-                <Text style={styles.tagLabel}>{tag.label}</Text>
+                <Text style={[
+                  styles.tagLabel,
+                  description === tag.label && styles.tagLabelSelected
+                ]}>
+                  {tag.label}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -372,32 +379,23 @@ export default function IncidentReportModal({
             style={[styles.sendBtn, submitting && styles.btnDisabled]}
             onPress={handleSendIncident}
             disabled={submitting}
+            activeOpacity={0.8}
           >
             {submitting ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color="#ffffff" />
             ) : (
               <>
-                <Send size={18} color="#fff" strokeWidth={2.5} style={{ marginRight: 8 }} />
+                <Send size={18} color="#ffffff" strokeWidth={2.5} style={{ marginRight: 8 }} />
                 <Text style={styles.sendBtnText}>ENVIAR REPORTE</Text>
               </>
             )}
           </TouchableOpacity>
 
-          <View style={{ height: 20 }} />
+          <View style={{ height: 40 }} />
         </ScrollView>
 
-        {/* TAB BAR */}
-        <View style={styles.tabBar}>
-          <TouchableOpacity style={styles.tabItem}>
-            <Text style={styles.tabIcon}>{"\u2630"}</Text>
-            <Text style={styles.tabText}>ESCANEAR</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.tabItem}>
-            <Text style={styles.tabIcon}>{"\u27F2"}</Text>
-            <Text style={styles.tabText}>HISTORIAL</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+        
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -405,233 +403,235 @@ export default function IncidentReportModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#e8e6f5",
+    backgroundColor: "#f8fafc", // Fondo limpio
   },
   header: {
     backgroundColor: "#ffffff",
-    paddingTop: 50,
+    paddingTop: Platform.OS === "ios" ? 50 : 40,
     paddingBottom: 16,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottomWidth: 2,
-    borderBottomColor: "#000",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 10,
   },
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
   },
-  backArrow: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#1e40af",
-    marginRight: 8,
-  },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#1e40af",
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1e293b",
+    letterSpacing: 0.5,
+  },
+  statusBadge: {
+    backgroundColor: "#eff6ff",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: "#1e40af",
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#2563eb",
     letterSpacing: 0.5,
   },
   scrollContent: {
     flex: 1,
-    padding: 16,
+    padding: 24,
   },
   mainTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#000",
-    marginBottom: 20,
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#0f172a",
+    marginBottom: 24,
+    letterSpacing: -0.5,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
-    marginBottom: 10,
-    marginTop: 12,
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#64748b",
+    marginBottom: 12,
+    letterSpacing: 1,
   },
   evidenceRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 8,
+    gap: 16,
+    marginBottom: 12,
   },
   photoBox: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#ffffff",
     borderWidth: 2,
-    borderColor: "#000",
-    borderRadius: 6,
-    padding: 24,
+    borderColor: "#cbd5e1",
+    borderStyle: "dashed", // Borde punteado moderno para carga de imágenes
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 120,
+    minHeight: 130,
     overflow: "hidden",
   },
   photoBoxWithImage: {
+    borderStyle: "solid",
+    borderColor: "#e2e8f0",
+    borderWidth: 1,
     padding: 0,
   },
   photoPreview: {
     width: "100%",
-    height: 120,
+    height: "100%",
     resizeMode: "cover",
   },
   voiceBox: {
     flex: 1,
-    backgroundColor: "#dc2626",
-    borderWidth: 2,
-    borderColor: "#000",
-    borderRadius: 6,
-    padding: 24,
+    backgroundColor: "#ef4444", // Rojo moderno
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 120,
+    minHeight: 130,
+    shadowColor: "#ef4444",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   voiceBoxActive: {
-    backgroundColor: "#991b1b",
-  },
-  evidenceIcon: {
-    fontSize: 38,
-    marginBottom: 6,
+    backgroundColor: "#b91c1c", // Rojo más oscuro cuando escucha
   },
   evidenceLabel: {
-    fontSize: 13,
-    fontWeight: "bold",
-    color: "#000",
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#64748b",
+    letterSpacing: 0.5,
+  },
+  voiceLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#ffffff",
     letterSpacing: 0.5,
   },
   removePhotoBtn: {
     backgroundColor: "#fef2f2",
     borderWidth: 1,
-    borderColor: "#dc2626",
-    borderRadius: 4,
-    padding: 8,
+    borderColor: "#fecaca",
+    borderRadius: 8,
+    paddingVertical: 10,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 8,
+    marginBottom: 20,
+    alignSelf: "flex-start",
+    paddingHorizontal: 16,
   },
   removePhotoText: {
     color: "#dc2626",
-    fontSize: 12,
-    fontWeight: "bold",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  textInputContainer: {
+    position: "relative",
+    marginBottom: 24,
   },
   textInput: {
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: "#000",
-    borderRadius: 6,
-    padding: 12,
-    color: "#000",
-    fontSize: 13,
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    borderRadius: 12,
+    padding: 16,
+    color: "#0f172a",
+    fontSize: 15,
     textAlignVertical: "top",
-    minHeight: 100,
+    minHeight: 120,
+    fontWeight: "500",
+  },
+  textInputListening: {
+    borderColor: "#ef4444",
+    borderWidth: 2,
+    backgroundColor: "#fef2f2",
+  },
+  listeningIndicator: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ef4444",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  listeningDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#ffffff",
+    marginRight: 6,
+  },
+  listeningText: {
+    color: "#ffffff",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.5,
   },
   tagsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 16,
+    gap: 10,
+    marginBottom: 24,
   },
   tagBtn: {
     width: "48%",
-    borderWidth: 2,
-    borderColor: "#000",
-    borderRadius: 6,
-    padding: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
     alignItems: "center",
     justifyContent: "center",
     minHeight: 70,
   },
   tagBtnSelected: {
-    borderWidth: 4,
-    borderColor: "#1e40af",
+    borderWidth: 2,
+    borderColor: "#2563eb",
   },
   tagLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
-    color: "#000",
+    color: "#475569",
     textAlign: "center",
   },
+  tagLabelSelected: {
+    color: "#1e3a8a",
+    fontWeight: "800",
+  },
   sendBtn: {
-    backgroundColor: "#1e3a8a",
-    padding: 16,
-    margin: 16,
-    borderRadius: 6,
+    backgroundColor: "#2563eb",
+    paddingVertical: 18,
+    borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#000",
+    shadowColor: "#2563eb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   btnDisabled: {
     opacity: 0.6,
   },
   sendBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-    letterSpacing: 0.5,
-  },
-  tabBar: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderTopWidth: 2,
-    borderTopColor: "#000",
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 14,
-  },
-  tabIcon: {
-    fontSize: 20,
-    color: "#000",
-  },
-  tabText: {
-    fontSize: 11,
-    fontWeight: "bold",
-    color: "#000",
-    marginTop: 2,
-    letterSpacing: 0.5,
-  },
-  textInputContainer: {
-    position: "relative",
-  },
-  textInputListening: {
-    borderColor: "#dc2626",
-    borderWidth: 3,
-    backgroundColor: "#fef2f2",
-  },
-  listeningIndicator: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#dc2626",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  listeningDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#fff",
-    marginRight: 6,
-  },
-  listeningText: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "bold",
-    letterSpacing: 0.5,
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 1,
   },
 });

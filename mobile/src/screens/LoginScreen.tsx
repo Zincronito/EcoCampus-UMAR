@@ -7,31 +7,44 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Svg, Path, G } from "react-native-svg";
+import { Feather } from "@expo/vector-icons";
 import { authService } from "../services/authService";
+
+// Interfaces para tipado estricto
+interface LoginResult {
+  token: string;
+  user: any;
+}
+
+interface LoginScreenProps {
+  onLoginSuccess: (result: LoginResult) => void;
+}
 
 // Logo de reciclaje (SVG)
 const RecycleLogo = () => (
-  <Svg width="80" height="80" viewBox="0 0 64 64">
-    <G fill="#1e40af">
+  <Svg width="70" height="70" viewBox="0 0 64 64">
+    <G fill="#16a34a">
       <Path d="M32 4 L40 18 L24 18 Z" />
       <Path d="M52 38 L60 52 L44 52 Z" />
       <Path d="M12 38 L20 52 L4 52 Z" />
-      <Path d="M28 22 L36 22 L36 30 L42 30 L32 42 L22 30 L28 30 Z" fillOpacity="0.7" />
+      <Path d="M28 22 L36 22 L36 30 L42 30 L32 42 L22 30 L28 30 Z" fillOpacity="0.8" />
     </G>
   </Svg>
 );
 
-export default function LoginScreen({ onLoginSuccess }: any) {
+export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const [employeeId, setEmployeeId] = useState("ADMIN-001");
   const [pin, setPin] = useState("1234");
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
     if (!employeeId || !pin) {
-      Alert.alert("Error", "Por favor completa todos los campos");
+      Alert.alert("Campos incompletos", "Por favor completa todos los datos para continuar.");
       return;
     }
 
@@ -42,46 +55,50 @@ export default function LoginScreen({ onLoginSuccess }: any) {
       await AsyncStorage.setItem("user", JSON.stringify(result.user));
       onLoginSuccess(result);
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Error al iniciar sesión");
+      Alert.alert("Acceso Denegado", error.message || "Credenciales incorrectas o problema de conexión.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.outerContainer}>
+    <KeyboardAvoidingView 
+      style={styles.outerContainer}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
       <View style={styles.card}>
-        {/* Logo */}
-        <View style={styles.logoContainer}>
-          <RecycleLogo />
+        {/* Encabezado */}
+        <View style={styles.headerContainer}>
+          <View style={styles.logoContainer}>
+            <RecycleLogo />
+          </View>
+          <Text style={styles.title}>EcoCampus</Text>
+          <Text style={styles.subtitle}>Acceso Operativo</Text>
         </View>
 
-        {/* Titulo */}
-        <Text style={styles.title}>Gestion de</Text>
-        <Text style={styles.title}>residuos</Text>
-        <Text style={styles.subtitle}>Acceso de Empleado</Text>
-
-        {/* ID */}
+        {/* Campo ID */}
         <Text style={styles.label}>ID DE EMPLEADO</Text>
         <View style={styles.inputContainer}>
           <View style={styles.iconBox}>
-            <Text style={styles.iconText}>ID</Text>
+            <Feather name="user" size={18} color="#6b7280" />
           </View>
           <TextInput
             style={styles.input}
-            placeholder="Ingrese su ID"
+            placeholder="Ej. ADMIN-001"
             value={employeeId}
             onChangeText={setEmployeeId}
             editable={!loading}
             placeholderTextColor="#9ca3af"
+            autoCapitalize="characters"
+            autoCorrect={false}
           />
         </View>
 
-        {/* PIN */}
-        <Text style={styles.label}>CONTRASEÑA / PIN</Text>
+        {/* Campo PIN */}
+        <Text style={styles.label}>PIN DE SEGURIDAD</Text>
         <View style={styles.inputContainer}>
           <View style={styles.iconBox}>
-            <Text style={styles.iconText}>***</Text>
+            <Feather name="lock" size={18} color="#6b7280" />
           </View>
           <TextInput
             style={styles.input}
@@ -91,180 +108,149 @@ export default function LoginScreen({ onLoginSuccess }: any) {
             secureTextEntry
             editable={!loading}
             placeholderTextColor="#9ca3af"
+            keyboardType="numeric"
           />
         </View>
 
-        {/* Boton ENTRAR */}
+        {/* Botón ENTRAR */}
         <TouchableOpacity
           style={[styles.buttonPrimary, loading && styles.buttonDisabled]}
           onPress={handleLogin}
           disabled={loading}
+          activeOpacity={0.8}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color="#ffffff" />
           ) : (
-            <Text style={styles.buttonText}>ENTRAR</Text>
+            <Text style={styles.buttonText}>INICIAR SESIÓN</Text>
           )}
         </TouchableOpacity>
 
-        {/* Boton AYUDA */}
-        <TouchableOpacity style={styles.buttonHelp}>
-          <Text style={styles.buttonHelpText}>AYUDA / SOPORTE</Text>
-        </TouchableOpacity>
-
-        {/* Boton GOOGLE */}
-        <TouchableOpacity style={styles.buttonGoogle}>
-          <View style={styles.googleIconContainer}>
-            <Text style={styles.googleG}>G</Text>
-          </View>
-          <Text style={styles.buttonGoogleText}>CONTINUAR CON{"\n"}GOOGLE</Text>
+        {/* Botón AYUDA */}
+        <TouchableOpacity style={styles.buttonHelp} activeOpacity={0.7}>
+          <Feather name="help-circle" size={16} color="#4b5563" style={styles.helpIcon} />
+          <Text style={styles.buttonHelpText}>Necesito ayuda con mi acceso</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   outerContainer: {
     flex: 1,
-    backgroundColor: "#e8e6f5",
+    backgroundColor: "#f3f4f6", // Un gris muy suave y moderno
     justifyContent: "center",
     alignItems: "center",
     padding: 16,
   },
   card: {
     backgroundColor: "#ffffff",
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: "#9ca3af",
-    padding: 30,
+    borderRadius: 16,
+    padding: 32,
     width: "100%",
     maxWidth: 400,
+    // Sistema de sombras para iOS y Android
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  headerContainer: {
+    alignItems: "center",
+    marginBottom: 32,
   },
   logoContainer: {
-    alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 16,
+    backgroundColor: "#f0fdf4", // Fondo sutil verde detrás del logo
+    padding: 16,
+    borderRadius: 100,
   },
   title: {
-    fontSize: 38,
-    fontWeight: "bold",
+    fontSize: 28,
+    fontWeight: "800",
     textAlign: "center",
-    color: "#000000",
-    lineHeight: 42,
-    fontFamily: "serif",
+    color: "#111827",
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     textAlign: "center",
     color: "#6b7280",
-    marginTop: 12,
-    marginBottom: 30,
+    marginTop: 4,
+    fontWeight: "500",
   },
   label: {
-    fontSize: 13,
-    fontWeight: "bold",
-    color: "#000000",
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#374151",
     marginBottom: 8,
-    marginTop: 10,
+    marginTop: 12,
     letterSpacing: 0.5,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#ffffff",
-    borderRadius: 4,
+    backgroundColor: "#f9fafb",
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#d1d5db",
-    marginBottom: 8,
+    borderColor: "#e5e7eb",
+    marginBottom: 12,
   },
   iconBox: {
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
     justifyContent: "center",
     alignItems: "center",
     borderRightWidth: 1,
     borderRightColor: "#e5e7eb",
   },
-  iconText: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: "#6b7280",
-  },
   input: {
     flex: 1,
     paddingVertical: 12,
-    paddingHorizontal: 12,
-    fontSize: 14,
-    color: "#000000",
+    paddingHorizontal: 16,
+    fontSize: 15,
+    color: "#111827",
   },
   buttonPrimary: {
-    backgroundColor: "#1e3a8a",
+    backgroundColor: "#16a34a", // Verde profesional
     paddingVertical: 16,
-    borderRadius: 4,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 24,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#1e3a8a",
+    marginBottom: 16,
+    shadowColor: "#16a34a",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   buttonText: {
     color: "#ffffff",
     fontSize: 15,
     fontWeight: "bold",
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   buttonHelp: {
-    backgroundColor: "#15803d",
-    paddingVertical: 16,
-    borderRadius: 4,
+    flexDirection: "row",
+    paddingVertical: 12,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#15803d",
+  },
+  helpIcon: {
+    marginRight: 8,
   },
   buttonHelpText: {
-    color: "#ffffff",
-    fontSize: 15,
-    fontWeight: "bold",
-    letterSpacing: 1,
-  },
-  buttonGoogle: {
-    backgroundColor: "#ffffff",
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 4,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    borderWidth: 1,
-    borderColor: "#000000",
-  },
-  googleIconContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-    backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-  },
-  googleG: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#4285F4",
-  },
-  buttonGoogleText: {
-    color: "#000000",
+    color: "#4b5563",
     fontSize: 14,
-    fontWeight: "bold",
-    letterSpacing: 1,
-    textAlign: "center",
+    fontWeight: "500",
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.7,
   },
 });
