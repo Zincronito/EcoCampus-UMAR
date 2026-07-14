@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  basePath: '/residuos',  // ← AGREGAR ESTO
-  assetPrefix: '/residuos',  // ← Y ESTO
+  //basePath: '/residuos',
+  //assetPrefix: '/residuos',
 }
 
 module.exports = nextConfig
