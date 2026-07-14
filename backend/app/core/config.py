@@ -1,52 +1,35 @@
-"""
-Configuración centralizada del proyecto.
-Lee las variables del archivo .env y las valida con tipos de Python.
-"""
-
-from pydantic_settings import BaseSettings
-
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # ── Aplicación 
-    API_ENV: str = "development"
-    API_DEBUG: bool = True
+    API_ENV: str = "production"
+    API_DEBUG: bool = False
     API_V1_PREFIX: str = "/api/v1"
     PROJECT_NAME: str = "EcoCampus UMAR API"
 
     # ── Base de datos 
-    POSTGRES_USER: str = "ecocampus"
-    POSTGRES_PASSWORD: str = "ecocampus_dev_2024"
+    # Quitamos los valores por defecto para obligar a usar las variables de entorno
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
     POSTGRES_HOST: str = "db"
     POSTGRES_PORT: int = 5432
-    POSTGRES_DB: str = "ecocampus_db"
-
-    @property
-    def DATABASE_URL(self) -> str:
-        """Construye la URL de conexión a PostgreSQL."""
-        return (
-            f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
-            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
-        )
+    POSTGRES_DB: str
+    DATABASE_URL: str # Definimos la variable directamente
 
     # ── Seguridad / JWT 
-    SECRET_KEY: str = "cambiar-esta-clave-en-produccion"
+    SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 43200
 
     # ── CORS 
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:3001,http://localhost:8081,http://192.168.1.73:3000,http://192.168.1.73:3001"
-
-    @property
-    def cors_origins_list(self) -> list[str]:
-        return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+    CORS_ORIGINS: str = "*" # Permite todo en desarrollo, o ajusta según necesites
 
     # ── MinIO 
-    MINIO_ROOT_USER: str = "minioadmin"
-    MINIO_ROOT_PASSWORD: str = "minioadmin"
-    MINIO_BUCKET_INCIDENTS: str = "incident-photos"
+    MINIO_ROOT_USER: str
+    MINIO_ROOT_PASSWORD: str
+    MINIO_BUCKET_INCIDENTS: str = "incidents"
 
-    model_config = {"env_file": "../../.env", "extra": "ignore"}
+    # Corregimos la ruta del env_file a la raíz del contenedor
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-
-# Instancia global — se importa en todo el proyecto
 settings = Settings()
