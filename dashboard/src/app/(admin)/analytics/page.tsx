@@ -186,6 +186,48 @@ export default function AnalyticsPage() {
       </div>
     );
   }
+  // Estado vacío: sin registros
+  if (!loading && analytics && analytics.summary?.total_records === 0) {
+    return (
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Análisis y Métricas
+            </h1>
+            <p className="text-gray-600 mt-1">
+              KPIs y visualización de tendencias en la recolección de residuos.
+            </p>
+          </div>
+        </div>
+
+        {/* Empty State */}
+        <div className="bg-white rounded-lg border border-gray-200 p-12">
+          <div className="flex flex-col items-center justify-center text-center max-w-md mx-auto">
+            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+              <BarChart3 className="w-8 h-8 text-blue-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Aún no hay datos para mostrar
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Las métricas y gráficas aparecerán aquí una vez que los recolectores 
+              registren recolecciones desde la aplicación móvil.
+            </p>
+            <div className="text-sm text-gray-500 bg-gray-50 rounded-lg p-4 w-full">
+              <p className="font-medium text-gray-700 mb-2">Para empezar:</p>
+              <ul className="text-left space-y-1">
+                <li>• Configura campus y sectores</li>
+                <li>• Registra contenedores</li>
+                <li>• Comparte la app móvil con los recolectores</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Pre-procesar datos de separación para la gráfica
   const separationChartData = analytics?.separation?.by_level
