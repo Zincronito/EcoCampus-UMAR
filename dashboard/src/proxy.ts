@@ -8,21 +8,29 @@ export async function proxy(request: NextRequest) {
 
   // Redirigir /api/v1 al backend externo
   if (pathname.startsWith("/api/v1")) {
-    const backendUrl = `http://127.0.0.1:8000${pathname}${request.nextUrl.search}`;  // ← Cambiar localhost por 127.0.0.1
+    // Lee la variable de entorno, si no existe, usa localhost por defecto (para entorno local)
+    const backendHost = process.env.BACKEND_URL || "http://127.0.0.1:8000";
+    
+    // Construye la URL final. Ojo: pathname ya incluye "/api/v1"
+    const backendUrl = `${backendHost}${pathname}${request.nextUrl.search}`;
+    
+    // Limpiamos los headers originales que puedan causar conflicto
+    const headers = new Headers(request.headers);
+    headers.delete("host"); // Dejamos que fetch asigne el host correcto automáticamente
+
     return fetch(backendUrl, {
       method: request.method,
-      headers: {
-        ...Object.fromEntries(request.headers),
-        host: "127.0.0.1:8000",
-    },
-    body: request.method !== "GET" && request.method !== "HEAD" ? await request.arrayBuffer() : undefined,
-  });
-}
+      headers: headers,
+      body: request.method !== "GET" && request.method !== "HEAD" ? await request.arrayBuffer() : undefined,
+    });
+  }
 
   // Verificar token para otras rutas
-  if (PUBLIC_PATHS.some((path) => pathname.startsWith(path)) ||
-      pathname.startsWith("/_next") ||
-      pathname.includes(".")) {
+  if (
+    PUBLIC_PATHS.some((path) => pathname.startsWith(path)) ||
+    pathname.startsWith("/_next") ||
+    pathname.includes(".")
+  ) {
     return NextResponse.next();
   }
 
