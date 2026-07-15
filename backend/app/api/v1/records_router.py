@@ -349,13 +349,20 @@ async def get_reports(
         query = select(CollectionRecord)
         
         # Filtros
-        if date_from:
-            date_from_obj = datetime.fromisoformat(date_from)
-            query = query.where(CollectionRecord.created_at >= date_from_obj)
+        from datetime import timedelta, timezone
         
+        # Filtros de fecha (asumiendo UTC-6 México)
+        MEXICO_OFFSET = timezone(timedelta(hours=-6))
+        
+        if date_from:
+            # Interpretar como fecha local México y convertir a UTC
+            date_from_obj = datetime.fromisoformat(date_from).replace(tzinfo=MEXICO_OFFSET)
+            query = query.where(CollectionRecord.created_at >= date_from_obj)
+
         if date_to:
-            date_to_obj = datetime.fromisoformat(date_to)
-            query = query.where(CollectionRecord.created_at <= date_to_obj)
+            # Sumar 1 día para incluir todo el día final, e interpretar como local México
+            date_to_obj = (datetime.fromisoformat(date_to) + timedelta(days=1)).replace(tzinfo=MEXICO_OFFSET)
+            query = query.where(CollectionRecord.created_at < date_to_obj)
         
         if collector_id:
             query = query.where(CollectionRecord.collector_id == collector_id)
@@ -462,6 +469,18 @@ async def get_analytics(
         
         # Query base simple
         query = select(CollectionRecord)
+         # Filtros de fecha (opcionales)
+         # Filtros de fecha (asumiendo UTC-6 México)
+        from datetime import timedelta, timezone
+        MEXICO_OFFSET = timezone(timedelta(hours=-6))
+        
+        if date_from:
+            date_from_obj = datetime.fromisoformat(date_from).replace(tzinfo=MEXICO_OFFSET)
+            query = query.where(CollectionRecord.created_at >= date_from_obj)
+
+        if date_to:
+            date_to_obj = (datetime.fromisoformat(date_to) + timedelta(days=1)).replace(tzinfo=MEXICO_OFFSET)
+            query = query.where(CollectionRecord.created_at < date_to_obj)
         
         # Cargar relaciones
         query = query.options(
