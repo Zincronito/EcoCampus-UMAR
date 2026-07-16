@@ -12,13 +12,16 @@ import {
   Building2,
   Info,
   Tag,
+  AlignLeft,
+  Navigation,
+  Eye
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -26,25 +29,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 import { locationsAPI, campusAPI } from "@/lib/api";
 import type { Campus } from "@/types";
 
-// Tipos de ubicacion sugeridos
+// Tipos de ubicación sugeridos
 const LOCATION_TYPES = [
-  { value: "aula", label: "Aula / Salon" },
+  { value: "aula", label: "Aula / Salón" },
   { value: "laboratorio", label: "Laboratorio" },
   { value: "biblioteca", label: "Biblioteca" },
-  { value: "cafeteria", label: "Cafeteria" },
+  { value: "cafeteria", label: "Cafetería" },
   { value: "oficina", label: "Oficina Administrativa" },
   { value: "instituto", label: "Instituto" },
-  { value: "plaza", label: "Plaza / Area Comun" },
-  { value: "deportivo", label: "Area Deportiva" },
+  { value: "plaza", label: "Plaza / Área Común" },
+  { value: "deportivo", label: "Área Deportiva" },
   { value: "estacionamiento", label: "Estacionamiento" },
   { value: "auditorio", label: "Auditorio" },
-  { value: "jardin", label: "Jardin / Area Verde" },
+  { value: "jardin", label: "Jardín / Área Verde" },
   { value: "otro", label: "Otro" },
 ];
+
+// Reutilizamos la Paleta de colores para mantener consistencia con el Dashboard
+const CAMPUS_COLORS = [
+  "#0ea5e9", // Sky blue
+  "#10b981", // Emerald
+  "#8b5cf6", // Violet
+  "#f59e0b", // Amber
+  "#f43f5e", // Rose
+  "#06b6d4", // Cyan
+  "#d946ef", // Fuchsia
+  "#84cc16", // Lime
+];
+
+const getColorForCampus = (campusId: string | undefined, campuses: Campus[]) => {
+  if (!campusId || campuses.length === 0) return "#94a3b8"; // Gris slate por defecto
+  const campusIndex = campuses.findIndex(c => c.id === campusId);
+  if (campusIndex === -1) return "#94a3b8";
+  return CAMPUS_COLORS[campusIndex % CAMPUS_COLORS.length];
+};
 
 export default function NewLocationPage() {
   const router = useRouter();
@@ -80,7 +103,7 @@ export default function NewLocationPage() {
     e.preventDefault();
 
     if (!name.trim()) {
-      toast.error("El nombre de la ubicacion es obligatorio");
+      toast.error("El nombre de la ubicación es obligatorio");
       return;
     }
 
@@ -102,11 +125,11 @@ export default function NewLocationPage() {
 
       await locationsAPI.create(payload);
 
-      toast.success(`Ubicacion "${name}" creada exitosamente`);
+      toast.success(`Ubicación "${name}" creada exitosamente`);
       router.push("/locations");
     } catch (error: any) {
       const errorMessage =
-        error.response?.data?.detail || "Error al crear la ubicacion";
+        error.response?.data?.detail || "Error al crear la ubicación";
       toast.error(errorMessage);
       console.error(error);
     } finally {
@@ -116,242 +139,260 @@ export default function NewLocationPage() {
 
   const selectedCampus = campuses.find((c) => c.id === campusId);
   const selectedType = LOCATION_TYPES.find((t) => t.value === locationType);
+  const themeColor = getColorForCampus(campusId, campuses);
+
+  if (loadingCampuses) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#F8FAFC]">
+        <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
+        <span className="text-slate-500 font-bold text-lg block text-center w-full">Cargando base de datos...</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-500">
-        <Link href="/locations" className="hover:text-blue-600">
-          Gestion de Ubicaciones
-        </Link>
-        <span>/</span>
-        <span className="text-gray-900 font-medium">Nueva Ubicacion</span>
-      </div>
-
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/locations">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Nueva Ubicacion</h1>
-            <p className="text-gray-600 mt-1">
-              Registra un nuevo lugar dentro de un campus
-            </p>
+    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-8 font-sans pb-24">
+      
+      {/* HEADER TOP-TIER */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5 mb-8">
+        <div>
+          <div className="flex items-center gap-2 text-sm text-slate-500 font-bold uppercase tracking-wider mb-2">
+            <Link href="/locations" className="hover:text-blue-600 flex items-center gap-1 transition-colors">
+              <ArrowLeft className="w-4 h-4" /> Mapa Operativo
+            </Link>
+            <span className="text-slate-300">/</span>
+            <span className="text-slate-900">Alta</span>
           </div>
+          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900">
+            Nueva Ubicación
+          </h1>
+          <p className="text-slate-500 font-medium text-base mt-1">
+            Traza y registra un nuevo punto físico dentro del mapa del campus.
+          </p>
         </div>
 
-        <div className="flex gap-2">
-          <Link href="/locations">
-            <Button variant="outline" disabled={saving}>
+        <div className="flex gap-3 w-full lg:w-auto">
+          <Link href="/locations" className="flex-1 lg:flex-none">
+            <Button variant="outline" disabled={saving} className="w-full rounded-full h-12 px-6 font-bold border-slate-200 text-slate-600 hover:bg-slate-50">
               Cancelar
             </Button>
           </Link>
           <Button
             onClick={handleSubmit}
-            disabled={saving || loadingCampuses}
-            className="bg-blue-600 hover:bg-blue-700"
+            disabled={saving || !campusId}
+            className="flex-1 lg:flex-none h-12 px-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-base shadow-lg shadow-blue-600/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
           >
             {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Guardando...
-              </>
+              <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Procesando</>
             ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                Guardar Ubicacion
-              </>
+              <><Save className="w-5 h-5 mr-2" /> Guardar Ubicación</>
             )}
           </Button>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          {/* Columna izquierda: Formulario - 2 columnas */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Informacion basica */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Info className="w-5 h-5 text-blue-600" />
-                  Informacion Basica
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+      <form onSubmit={handleSubmit}>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+          
+          {/* COLUMNA IZQUIERDA: FORMULARIO */}
+          <div className="xl:col-span-2 space-y-6">
+            
+            {/* SECCIÓN 1: Información Básica */}
+            <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm relative overflow-hidden">
+              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100 relative z-10">
+                <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                  <Info className="w-5 h-5 text-slate-600" />
+                </div>
+                <h2 className="text-xl font-black text-slate-900">Información General</h2>
+              </div>
+              
+              <div className="space-y-6 relative z-10">
                 <div className="space-y-2">
-                  <Label htmlFor="name">
-                    Nombre de la Ubicacion <span className="text-red-500">*</span>
+                  <Label htmlFor="name" className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Nombre del Área <span className="text-rose-500">*</span>
                   </Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="Ej. Instituto de Biologia, Cafeteria Central..."
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    disabled={saving}
-                    maxLength={150}
-                  />
-                  <p className="text-xs text-gray-500">{name.length}/150 caracteres</p>
+                  <div className="relative">
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="Ej. Instituto de Biología, Cafetería Central..."
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      disabled={saving}
+                      maxLength={150}
+                      className="h-14 rounded-xl bg-slate-50 border-none ring-1 ring-slate-200 focus-visible:ring-2 focus-visible:ring-blue-500 text-lg font-black px-5 pl-12"
+                    />
+                  </div>
+                  <p className="text-xs font-medium text-slate-400 text-right">{name.length}/150</p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="sector">Sector / Area</Label>
-                  <Input
-                    id="sector"
-                    type="text"
-                    placeholder="Ej. Edificio A, Planta Baja, Sector Norte..."
-                    value={sector}
-                    onChange={(e) => setSector(e.target.value)}
-                    disabled={saving}
-                    maxLength={100}
-                  />
-                  <p className="text-xs text-gray-500">
-                    Sub-area o seccion especifica dentro de la ubicacion (opcional)
-                  </p>
+                  <Label htmlFor="sector" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sector Específico (Opcional)</Label>
+                  <div className="relative">
+                    <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <Input
+                      id="sector"
+                      type="text"
+                      placeholder="Ej. Edificio A, Planta Baja, Zona Norte..."
+                      value={sector}
+                      onChange={(e) => setSector(e.target.value)}
+                      disabled={saving}
+                      maxLength={100}
+                      className="h-14 rounded-xl bg-slate-50 border-none ring-1 ring-slate-200 focus-visible:ring-2 focus-visible:ring-blue-500 text-base font-medium px-5 pl-12"
+                    />
+                  </div>
+                  <p className="text-xs font-medium text-slate-400">Ayuda a identificar la sub-área o sección precisa donde se ubicarán los contenedores.</p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descripcion</Label>
+                <div className="space-y-2 pt-2">
+                  <Label htmlFor="description" className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <AlignLeft className="w-4 h-4" /> Descripción / Observaciones (Opcional)
+                  </Label>
                   <Textarea
                     id="description"
-                    placeholder="Detalles adicionales: capacidad, horarios, accesos..."
+                    placeholder="Escribe detalles adicionales relevantes: capacidad del área, horarios de acceso, referencias visuales..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     disabled={saving}
                     rows={4}
                     maxLength={500}
-                    className="resize-none"
+                    className="rounded-xl bg-slate-50 border-none ring-1 ring-slate-200 focus-visible:ring-2 focus-visible:ring-blue-500 text-base font-medium p-4 resize-none"
                   />
-                  <p className="text-xs text-gray-500">
-                    {description.length}/500 caracteres
-                  </p>
+                  <p className="text-xs font-medium text-slate-400 text-right">{description.length}/500</p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            {/* Asignacion */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Tag className="w-5 h-5 text-blue-600" />
-                  Clasificacion y Asignacion
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="campus">
-                    Campus <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={campusId}
-                    onValueChange={setCampusId}
-                    disabled={saving || loadingCampuses}
-                  >
-                    <SelectTrigger id="campus">
-                      <SelectValue
-                        placeholder={
-                          loadingCampuses ? "Cargando..." : "Selecciona un campus"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {campuses.map((campus) => (
-                        <SelectItem key={campus.id} value={campus.id}>
-                          <div className="flex items-center gap-2">
-                            <Building2 className="w-4 h-4" />
-                            <span>
-                              {campus.name} ({campus.code})
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-gray-500">
-                    Selecciona el campus al que pertenece esta ubicacion
-                  </p>
+            {/* SECCIÓN 2: Clasificación y Asignación */}
+            <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                  <Tag className="w-5 h-5 text-slate-600" />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="location_type">Tipo de Ubicacion</Label>
-                  <Select
-                    value={locationType}
-                    onValueChange={setLocationType}
-                    disabled={saving}
-                  >
-                    <SelectTrigger id="location_type">
-                      <SelectValue placeholder="Selecciona un tipo (opcional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LOCATION_TYPES.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-gray-500">
-                    Clasificacion para mejor organizacion y reportes (opcional)
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Columna derecha: Vista Previa */}
-          <div>
-            <Card className="bg-gradient-to-br from-blue-50 to-white">
-              <CardHeader>
-                <CardTitle className="text-sm text-gray-600 flex items-center gap-2">
-                  <Info className="w-4 h-4" />
-                  Vista Previa
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-white rounded-lg border-2 border-blue-100 p-4">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-14 h-14 rounded-lg flex items-center justify-center bg-blue-100">
-                      <MapPin className="w-7 h-7 text-blue-600" strokeWidth={2} />
-                    </div>
+                <h2 className="text-xl font-black text-slate-900">Ubicación Estructural</h2>
+              </div>
+              
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="campus" className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Campus Base <span className="text-rose-500">*</span>
+                    </Label>
+                    <Select value={campusId} onValueChange={setCampusId} disabled={saving}>
+                      <SelectTrigger id="campus" className="h-14 rounded-xl bg-slate-50 border-none ring-1 ring-slate-200 focus-visible:ring-2 focus-visible:ring-blue-500 text-base font-bold px-5 text-slate-800">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
+                          <SelectValue placeholder="Selecciona un campus" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        {campuses.map((campus) => (
+                          <SelectItem key={campus.id} value={campus.id} className="font-bold text-slate-700 py-3">
+                            {campus.name} ({campus.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                  <h3 className="text-lg font-bold text-gray-900 mb-1">
-                    {name || "Nombre de la Ubicacion"}
-                  </h3>
-                  {sector && (
-                    <p className="text-sm font-medium text-blue-600 mb-2">
-                      Sector: {sector}
+                  <div className="space-y-2">
+                    <Label htmlFor="location_type" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tipo de Zona (Opcional)</Label>
+                    <Select value={locationType} onValueChange={setLocationType} disabled={saving}>
+                      <SelectTrigger id="location_type" className="h-14 rounded-xl bg-slate-50 border-none ring-1 ring-slate-200 focus-visible:ring-2 focus-visible:ring-blue-500 text-base font-medium px-5">
+                        <SelectValue placeholder="Sin especificar" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        {LOCATION_TYPES.map((type) => (
+                          <SelectItem key={type.value} value={type.value} className="font-medium">
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* COLUMNA DERECHA: VISTA PREVIA (Sticky) */}
+          <div className="xl:col-span-1 xl:sticky xl:top-8">
+            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2 ml-2">
+              <Eye className="w-4 h-4" /> Tarjeta de Previsualización
+            </h3>
+            
+            {/* RÉPLICA EXACTA DEL DASHBOARD DE UBICACIONES */}
+            <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden transition-all duration-300">
+              
+              {/* Aura y línea de color asignada por el Campus */}
+              <div 
+                className="absolute top-0 left-0 w-full h-2 transition-all duration-500"
+                style={{ backgroundColor: themeColor }} 
+              />
+              <div 
+                className="absolute top-0 left-0 w-full h-32 opacity-10 blur-3xl pointer-events-none transition-all duration-500"
+                style={{ backgroundColor: themeColor }} 
+              />
+
+              {/* Cabecera de la Tarjeta */}
+              <div className="flex justify-between items-start mb-6 pt-2">
+                <div className="flex gap-4 items-center">
+                  <div 
+                    className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm relative z-10 transition-colors duration-500"
+                    style={{ backgroundColor: `${themeColor}15` }}
+                  >
+                    <MapPin className="w-7 h-7 transition-colors duration-500" style={{ color: themeColor }} strokeWidth={2.5} />
+                  </div>
+                  <div className="min-w-0 pr-4">
+                    <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-0.5 flex items-center gap-1">
+                      <Navigation className="w-3 h-3" /> Sector
                     </p>
-                  )}
-                  <p className="text-xs text-gray-600 mb-4 line-clamp-2 min-h-[2rem]">
-                    {description || "Sin descripcion"}
-                  </p>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <div className="flex items-center gap-1.5">
-                      <Building2 className="w-3.5 h-3.5 text-gray-500" />
-                      <span className="text-xs font-semibold text-gray-700 truncate max-w-[100px]">
-                        {selectedCampus?.name || "Sin campus"}
-                      </span>
-                    </div>
-                    {selectedType && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                        {selectedType.label}
-                      </span>
-                    )}
+                    <h4 className="font-bold text-slate-700 truncate transition-colors duration-500" style={{ color: themeColor }}>
+                      {sector || "Sin sector"}
+                    </h4>
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-3 italic text-center">
-                  Asi se vera en la lista de ubicaciones
+              </div>
+
+              {/* Cuerpo de la Tarjeta */}
+              <div className="mb-6 relative z-10">
+                <h3 className={cn("text-2xl font-black mb-2 truncate transition-colors", name ? "text-slate-900" : "text-slate-300")} title={name}>
+                  {name || "Nombre del Área"}
+                </h3>
+                <p className={cn("text-sm font-medium line-clamp-2 min-h-[2.5rem]", description ? "text-slate-500" : "text-slate-300 italic")}>
+                  {description || "La descripción aparecerá aquí para dar más contexto..."}
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+
+              {/* Footer de la Tarjeta (Campus y Tipo) */}
+              <div className="flex items-center justify-between pt-5 border-t border-slate-100 relative z-10">
+                <div className="flex items-center gap-2 max-w-[65%]">
+                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                    <Building2 className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-slate-400 leading-none">Campus</span>
+                    <span className="text-sm font-bold text-slate-800 leading-tight truncate">
+                      {selectedCampus?.name || "Sin asignar"}
+                    </span>
+                  </div>
+                </div>
+                
+                {selectedType && (
+                  <Badge variant="outline" className="bg-white text-slate-600 border-slate-200 font-bold px-3 py-1 truncate shrink-0 max-w-[30%]">
+                    {selectedType.label}
+                  </Badge>
+                )}
+              </div>
+            </div>
+            
+            <p className="text-xs text-slate-400 text-center mt-4 font-medium">
+              El color de la tarjeta se asigna automáticamente al seleccionar el campus.
+            </p>
           </div>
+
         </div>
       </form>
     </div>
