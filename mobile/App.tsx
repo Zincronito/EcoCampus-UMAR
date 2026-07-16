@@ -7,6 +7,7 @@ import ScanSuccessScreen from "./src/screens/ScanSuccessScreen";
 import CollectionScreen from "./src/screens/CollectionScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
 import SubmitSuccessScreen from "./src/screens/SubmitSuccessScreen";
+import { syncService } from "./src/services/syncService";
 
 type ScreenType =
   | "welcome"
@@ -34,6 +35,12 @@ export default function App() {
 
   useEffect(() => {
     checkSession();
+  }, []);
+
+  //iniciar auto-sync de la cola offline cuando la app se arranca
+  useEffect(() => {
+    const unsubscribe = syncService.startAutoSync();
+    return () => unsubscribe();
   }, []);
 
   const checkSession = async () => {

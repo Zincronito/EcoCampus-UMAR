@@ -112,34 +112,34 @@ export const containerService = {
     }
   },
   getByCode: async (containerCode: string) => {
-  try {
-    console.log("📦 Buscando contenedor por codigo:", containerCode);
+    try {
+      console.log("📦 Buscando contenedor por codigo:", containerCode);
 
-    const response = await fetch(
-      `${API_URL}/containers/code/${containerCode}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+      const response = await fetch(
+        `${API_URL}/containers/code/${containerCode}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error(`Contenedor "${containerCode}" no encontrado`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error(`Contenedor "${containerCode}" no encontrado`);
+        }
+        throw new Error("Error al buscar contenedor");
       }
-      throw new Error("Error al buscar contenedor");
+
+      const data = await response.json();
+      console.log("Contenedor encontrado:", data);
+      return data;
+    } catch (error: any) {
+      console.error("Error al buscar contenedor:", error.message);
+      throw error;
     }
-
-    const data = await response.json();
-    console.log("Contenedor encontrado:", data);
-    return data;
-  } catch (error: any) {
-    console.error("Error al buscar contenedor:", error.message);
-    throw error;
-  }
-},
+  },
 };
 
 // ────────────────────────────────────────────────────────────
@@ -161,6 +161,29 @@ export const recordService = {
     try {
       console.log("Creando reporte de recolección...", recordData);
 
+      // Detectar si hay internet
+      const NetInfo = require("@react-native-community/netinfo").default;
+      const netState = await NetInfo.fetch();
+      const isOnline = netState.isConnected && netState.isInternetReachable;
+
+      if (!isOnline) {
+        console.log("Sin conexión, guardando en cola offline");
+        const { offlineQueue } = require("./offlineQueue");
+        const queued = await offlineQueue.add({
+          type: "record",
+          endpoint: "/records",
+          payload: { ...recordData, synced_from_offline: true },
+        });
+        console.log(`📌 Guardado en cola con ID: ${queued.id}`);
+        return {
+          ...recordData,
+          id: queued.id,
+          created_at: queued.createdAt,
+          _offline: true, // Marca para que la UI sepa que está pendiente
+        };
+      }
+
+      // Con internet: intenta enviar directamente
       const response = await fetch(`${API_URL}/records`, {
         method: "POST",
         headers: {
@@ -170,14 +193,49 @@ export const recordService = {
       });
 
       if (!response.ok) {
+        // Si falla el servidor por red, guardar en cola
+        if (response.status >= 500 || response.status === 0) {
+          console.log("Error de servidor, guardando en cola offline");
+          const { offlineQueue } = require("./offlineQueue");
+          const queued = await offlineQueue.add({
+            type: "record",
+            endpoint: "/records",
+            payload: { ...recordData, synced_from_offline: true },
+          });
+          console.log(`📌 Guardado en cola con ID: ${queued.id}`);
+          return {
+            ...recordData,
+            id: queued.id,
+            created_at: queued.createdAt,
+            _offline: true,
+          };
+        }
         const error = await response.json();
         throw new Error(error.detail || "Error al crear reporte");
       }
 
       const data = await response.json();
-      console.log("eporte creado:", data);
+      console.log("Reporte creado:", data);
       return data;
     } catch (error: any) {
+      // Si es error de red (fetch fail), guardar en cola
+      if (error.message?.includes("Network") || error.message?.includes("fetch")) {
+        console.log("Error de red, guardando en cola offline");
+        const { offlineQueue } = require("./offlineQueue");
+        const queued = await offlineQueue.add({
+          type: "record",
+          endpoint: "/records",
+          payload: { ...recordData, synced_from_offline: true },
+        });
+        console.log(`📌 Guardado en cola con ID: ${queued.id}`);
+        return {
+          ...recordData,
+          id: queued.id,
+          created_at: queued.createdAt,
+          _offline: true,
+        };
+      }
+
       console.error("Error al crear reporte:", error.message);
       throw error;
     }
@@ -246,8 +304,32 @@ export const incidentService = {
     collection_record_id?: string;
   }) => {
     try {
-      console.log("Reportando incidente...", incidentData);
+      console.log("Creando incidencia...", incidentData);
 
+      // Detectar si hay internet
+      const NetInfo = require("@react-native-community/netinfo").default;
+      const netState = await NetInfo.fetch();
+      const isOnline = netState.isConnected && netState.isInternetReachable;
+
+      if (!isOnline) {
+        console.log("Sin conexión, guardando incidencia en cola offline");
+        const { offlineQueue } = require("./offlineQueue");
+        const queued = await offlineQueue.add({
+          type: "incident",
+          endpoint: "/incidents",
+          payload: incidentData,
+          photoUri: incidentData.photo_url, // Si es URI local, la subimos después
+        });
+        console.log(`📌 Guardado en cola con ID: ${queued.id}`);
+        return {
+          ...incidentData,
+          id: queued.id,
+          created_at: queued.createdAt,
+          _offline: true,
+        };
+      }
+
+      // Con internet: intenta enviar directamente
       const response = await fetch(`${API_URL}/incidents`, {
         method: "POST",
         headers: {
@@ -257,15 +339,50 @@ export const incidentService = {
       });
 
       if (!response.ok) {
+        if (response.status >= 500 || response.status === 0) {
+          console.log("Error de servidor, guardando incidencia en cola");
+          const { offlineQueue } = require("./offlineQueue");
+          const queued = await offlineQueue.add({
+            type: "incident",
+            endpoint: "/incidents",
+            payload: incidentData,
+            photoUri: incidentData.photo_url,
+          });
+          console.log(`📌 Guardado en cola con ID: ${queued.id}`);
+          return {
+            ...incidentData,
+            id: queued.id,
+            created_at: queued.createdAt,
+            _offline: true,
+          };
+        }
         const error = await response.json();
-        throw new Error(error.detail || "Error al reportar incidente");
+        throw new Error(error.detail || "Error al crear incidencia");
       }
 
       const data = await response.json();
-      console.log("Incidente reportado:", data);
+      console.log("Incidencia creada:", data);
       return data;
     } catch (error: any) {
-      console.error("Error al reportar incidente:", error.message);
+      if (error.message?.includes("Network") || error.message?.includes("fetch")) {
+        console.log("Error de red, guardando incidencia en cola");
+        const { offlineQueue } = require("./offlineQueue");
+        const queued = await offlineQueue.add({
+          type: "incident",
+          endpoint: "/incidents",
+          payload: incidentData,
+          photoUri: incidentData.photo_url,
+        });
+        console.log(`📌 Guardado en cola con ID: ${queued.id}`);
+        return {
+          ...incidentData,
+          id: queued.id,
+          created_at: queued.createdAt,
+          _offline: true,
+        };
+      }
+
+      console.error("Error al crear incidencia:", error.message);
       throw error;
     }
   },
@@ -365,7 +482,7 @@ export const fileService = {
 
       const data = await uploadResponse.json();
       console.log("Foto subida:", data.photo_url);
-      
+
       return data.photo_url; // URL pública de MinIO
 
     } catch (error: any) {

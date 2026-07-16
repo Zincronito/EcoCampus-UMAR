@@ -35,6 +35,7 @@ interface IncidentReportModalProps {
   containerId: string;
   collectorId: string;
   containerCode: string;
+  categoryName: string;
   formData: {
     gross_weight: number;
     net_weight: number;
@@ -53,6 +54,7 @@ export default function IncidentReportModal({
   containerId,
   collectorId,
   containerCode,
+  categoryName,
   formData,
   onClose,
   onSuccess,
@@ -226,8 +228,6 @@ export default function IncidentReportModal({
         collector_id: collectorId,
       };
 
-      const containerData = await containerService.getById(containerId);
-      const categoryName = containerData?.waste_category?.name || "Sin categoría";
 
       const savedRecord = await recordService.create(recordPayload as any);
 
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 130,
+    height: 140,
     overflow: "hidden",
   },
   photoBoxWithImage: {

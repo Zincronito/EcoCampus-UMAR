@@ -37,6 +37,7 @@ export default function CollectionScreen({
   preselectedContainer,
   onBackToScanner,
 }: any) {
+  console.log("🎨 CollectionScreen RENDERIZADO");
   const [selectedContainer, setSelectedContainer] = useState<Container | null>(
     preselectedContainer || null
   );
@@ -181,14 +182,17 @@ export default function CollectionScreen({
   };
 
   const handleSubmit = async () => {
+    console.log("🚀 handleSubmit iniciado");
     const error = validateForm();
     if (error) {
+      console.log("❌ Validación falló:", error);
       Alert.alert("Error", error);
       return;
     }
 
     try {
       setSubmitting(true);
+      console.log("📝 Preparando payload...");
 
       const weight = willWeigh ? getWeightNumber() : null;
       const netWeight = weight ? weight - selectedContainer!.tare_weight : null;
@@ -203,12 +207,13 @@ export default function CollectionScreen({
         container_id: selectedContainer!.id,
         collector_id: user.id,
       };
+      console.log("📤 Payload listo, llamando a recordService.create...");
 
-      const containerData = await containerService.getById(selectedContainer!.id);
-      const categoryName = containerData?.waste_category?.name || "Sin categoria";
-
+      // Usar la info que ya tenemos del contenedor (evita llamada extra)
+      const categoryName = (selectedContainer as any)?.waste_category?.name || "Sin categoria";
+      console.log("🎯 Antes de recordService.create con payload:", payload);
       await recordService.create(payload);
-
+      console.log("✅ recordService.create completado");
       const containerCode = selectedContainer!.container_code;
       setSelectedContainer(null);
       setWillWeigh(null);
@@ -670,6 +675,7 @@ export default function CollectionScreen({
           containerId={selectedContainer.id}
           collectorId={user.id}
           containerCode={selectedContainer.container_code}
+          categoryName={(selectedContainer as any)?.waste_category?.name || "Sin categoria"}
           formData={{
             gross_weight: willWeigh ? getWeightNumber() : 0,
             net_weight: willWeigh ? getWeightNumber() - selectedContainer.tare_weight : 0,
