@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+});
+
+// Configura la fuente Inter (esta es la que le dará el toque pro)
+const inter = Inter({ 
+  subsets: ["latin"],
+  variable: "--font-inter", 
 });
 
 const geistMono = Geist_Mono({
@@ -26,9 +32,11 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} h-full overflow-hidden antialiased`}
+      // Dejamos tus variables de Geist intactas por si las usas, pero sumamos Inter
+      className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} h-full overflow-hidden antialiased`}
     >
-      <body className="h-full overflow-hidden flex flex-col bg-background">
+      {/* AQUÍ ESTÁ EL CAMBIO: Agregamos ${inter.className} para aplicar la fuente a toda la app */}
+      <body className={`${inter.className} h-full overflow-hidden flex flex-col bg-background`}>
         {children}
         <Toaster richColors position="top-right" />
       </body>
