@@ -13,10 +13,10 @@ import {
   AlertTriangle,
   Search,
   Building2,
+  Navigation
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -43,6 +43,31 @@ import type { Location, Campus } from "@/types";
 
 type FilterType = "all" | "active" | "inactive";
 
+// Paleta ampliada de colores vibrantes
+const CAMPUS_COLORS = [
+  "#0ea5e9", // Sky blue
+  "#10b981", // Emerald
+  "#8b5cf6", // Violet
+  "#f59e0b", // Amber
+  "#f43f5e", // Rose
+  "#06b6d4", // Cyan
+  "#d946ef", // Fuchsia
+  "#84cc16", // Lime
+];
+
+// Función mejorada: Asigna el color basado en la posición real del campus en tu base de datos
+const getColorForCampus = (campusId: string | undefined, campuses: Campus[]) => {
+  if (!campusId || campuses.length === 0) return "#94a3b8"; // Gris por defecto
+  
+  // Buscamos en qué posición de la lista está este campus
+  const campusIndex = campuses.findIndex(c => c.id === campusId);
+  
+  if (campusIndex === -1) return "#94a3b8";
+  
+  // Le asignamos su color basado en su posición
+  return CAMPUS_COLORS[campusIndex % CAMPUS_COLORS.length];
+};
+
 export default function LocationsPage() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [campuses, setCampuses] = useState<Campus[]>([]);
@@ -61,7 +86,7 @@ export default function LocationsPage() {
     try {
       setLoading(true);
       const [locationsData, campusData] = await Promise.all([
-        locationsAPI.getAll(false), // Traer todas (activas e inactivas)
+        locationsAPI.getAll(false),
         campusAPI.getAll(),
       ]);
       setLocations(locationsData);
@@ -76,346 +101,312 @@ export default function LocationsPage() {
 
   const handleToggleActive = async () => {
     if (!locationToToggle) return;
-
     const isActivating = !locationToToggle.is_active;
-
     try {
       setToggling(true);
-
       if (isActivating) {
         await locationsAPI.update(locationToToggle.id, { is_active: true });
-        toast.success(`Ubicación "${locationToToggle.name}" reactivada`);
+        toast.success(`Ubicación "${locationToToggle.name}" reactivada con éxito`);
       } else {
         await locationsAPI.delete(locationToToggle.id);
         toast.success(`Ubicación "${locationToToggle.name}" desactivada`);
       }
-
       setLocationToToggle(null);
       await loadData();
     } catch (error: any) {
-      toast.error(
-        isActivating
-          ? "Error al reactivar la ubicación"
-          : "Error al desactivar la ubicación"
-      );
+      toast.error(isActivating ? "Error al reactivar" : "Error al desactivar");
       console.error(error);
     } finally {
       setToggling(false);
     }
   };
 
-  // Filtrar
   const filteredLocations = locations.filter((loc) => {
     const matchesSearch =
       loc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (loc.sector || "").toLowerCase().includes(searchTerm.toLowerCase());
-
     const matchesStatus =
       filter === "all" ||
       (filter === "active" && loc.is_active) ||
       (filter === "inactive" && !loc.is_active);
-
     const matchesCampus = campusFilter === "all" || loc.campus_id === campusFilter;
 
     return matchesSearch && matchesStatus && matchesCampus;
   });
 
-  // Stats
   const activeCount = locations.filter((l) => l.is_active).length;
   const inactiveCount = locations.filter((l) => !l.is_active).length;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gestión de Ubicaciones</h1>
-          <p className="text-gray-600 mt-1">
-            Administra los lugares específicos dentro de cada campus.
+    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-8 font-sans">
+      
+      {/* HEADER COMPACTO Y MODERNO */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-5 mb-6">
+        <div className="space-y-2">
+          <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 px-3 py-1 font-bold tracking-wide uppercase">
+            Mapa Operativo
+          </Badge>
+          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900">
+            Gestión de Ubicaciones
+          </h1>
+          <p className="text-slate-500 font-medium text-base max-w-xl">
+            Administra los sectores, áreas y puntos específicos de recolección dentro de cada campus.
           </p>
         </div>
+        
         <Link href="/locations/new">
-          <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-5 h-5 mr-2" />
+          <Button className="h-12 px-6 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-base shadow-lg shadow-blue-600/20 transition-all hover:scale-105 active:scale-95">
+            <Plus className="w-5 h-5 mr-2" strokeWidth={3} />
             Nueva Ubicación
           </Button>
         </Link>
       </div>
 
-      {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        {/* Búsqueda */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            type="text"
-            placeholder="Buscar ubicación o sector..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+      {/* BLOQUE DE FILTROS */}
+      <div className="flex flex-col gap-4 mb-10">
+        <div className="bg-white p-2 rounded-full shadow-sm border border-slate-100 flex flex-col md:flex-row items-center gap-2">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+            <Input
+              type="text"
+              placeholder="Busca por nombre de área o sector..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-12 pr-6 py-6 rounded-full border-none bg-transparent shadow-none focus-visible:ring-0 text-lg font-medium text-slate-700 placeholder:text-slate-400"
+            />
+          </div>
+          <div className="flex gap-2 w-full md:w-auto p-1 overflow-x-auto">
+            <Button onClick={() => setFilter("all")} className={cn("rounded-full px-6 py-6 font-bold transition-colors", filter === "all" ? "bg-slate-900 text-white hover:bg-slate-800" : "bg-transparent text-slate-500 hover:bg-slate-100")}>
+              Todas ({locations.length})
+            </Button>
+            <Button onClick={() => setFilter("active")} className={cn("rounded-full px-6 py-6 font-bold transition-colors", filter === "active" ? "bg-emerald-500 text-white hover:bg-emerald-600" : "bg-transparent text-slate-500 hover:bg-slate-100")}>
+              Activas ({activeCount})
+            </Button>
+            <Button onClick={() => setFilter("inactive")} className={cn("rounded-full px-6 py-6 font-bold transition-colors", filter === "inactive" ? "bg-rose-500 text-white hover:bg-rose-600" : "bg-transparent text-slate-500 hover:bg-slate-100")}>
+              Inactivas ({inactiveCount})
+            </Button>
+          </div>
         </div>
 
-        {/* Filtro por Campus */}
-        <Select value={campusFilter} onValueChange={setCampusFilter}>
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <SelectValue placeholder="Filtrar por campus" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los campus</SelectItem>
-            {campuses.map((campus) => (
-              <SelectItem key={campus.id} value={campus.id}>
-                {campus.name} ({campus.code})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Filtros por estado */}
-        <div className="flex gap-2">
-          <Button
-            variant={filter === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter("all")}
-            className={filter === "all" ? "bg-blue-600 hover:bg-blue-700" : ""}
-          >
-            Todas ({locations.length})
-          </Button>
-          <Button
-            variant={filter === "active" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter("active")}
-            className={filter === "active" ? "bg-green-600 hover:bg-green-700" : ""}
-          >
-            Activas ({activeCount})
-          </Button>
-          <Button
-            variant={filter === "inactive" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter("inactive")}
-            className={filter === "inactive" ? "bg-gray-600 hover:bg-gray-700" : ""}
-          >
-            Inactivas ({inactiveCount})
-          </Button>
+        <div className="flex flex-wrap items-center gap-3 px-2">
+          <Select value={campusFilter} onValueChange={setCampusFilter}>
+            <SelectTrigger className="w-full sm:w-[260px] rounded-2xl bg-white border-slate-200 h-12 font-medium text-slate-700 shadow-sm">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-slate-400" />
+                <SelectValue placeholder="Filtrar mapa por campus" />
+              </div>
+            </SelectTrigger>
+            <SelectContent className="rounded-2xl">
+              <SelectItem value="all">Todos los campus</SelectItem>
+              {campuses.map((campus) => (
+                <SelectItem key={campus.id} value={campus.id}>{campus.name} ({campus.code})</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      {/* Loading state */}
+      {/* ESTADOS DE CARGA Y VACÍOS */}
       {loading && (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-          <span className="ml-3 text-gray-600">Cargando ubicaciones...</span>
+        <div className="flex flex-col items-center justify-center py-24">
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
+          <p className="text-slate-500 font-bold text-lg">Cargando ubicaciones...</p>
         </div>
       )}
 
-      {/* Empty states */}
       {!loading && filteredLocations.length === 0 && locations.length > 0 && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Search className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500">No se encontraron ubicaciones con los filtros actuales</p>
-          </CardContent>
-        </Card>
+        <div className="bg-white rounded-3xl p-16 text-center border border-slate-100 shadow-sm flex flex-col items-center justify-center max-w-2xl mx-auto mt-12">
+          <div className="bg-slate-50 p-6 rounded-full mb-6">
+            <Search className="w-12 h-12 text-slate-300" strokeWidth={3} />
+          </div>
+          <h3 className="text-2xl font-black text-slate-900 mb-2">Sin coincidencias</h3>
+          <p className="text-slate-500 font-medium">No encontramos áreas con los filtros actuales.</p>
+        </div>
       )}
 
       {!loading && locations.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <MapPin className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500 mb-4">No hay ubicaciones registradas</p>
-            <Link href="/locations/new">
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Crear primera ubicación
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <div className="bg-white rounded-3xl p-16 text-center border border-slate-100 shadow-sm flex flex-col items-center justify-center max-w-2xl mx-auto mt-12">
+          <div className="bg-slate-50 p-6 rounded-full mb-6">
+            <MapPin className="w-12 h-12 text-slate-300" strokeWidth={3} />
+          </div>
+          <h3 className="text-2xl font-black text-slate-900 mb-2">Mapa en blanco</h3>
+          <p className="text-slate-500 font-medium mb-8">No hay ubicaciones registradas en la base de datos.</p>
+          <Link href="/locations/new">
+            <Button className="h-12 px-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold">
+              <Plus className="w-5 h-5 mr-2" strokeWidth={3} />
+              Trazar primera ubicación
+            </Button>
+          </Link>
+        </div>
       )}
 
-      {/* Grid de ubicaciones */}
+      {/* GRID MÁGICO DE UBICACIONES */}
       {!loading && filteredLocations.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredLocations.map((location) => (
-            <Card
-              key={location.id}
-              className={cn(
-                "transition-all relative",
-                location.is_active
-                  ? "hover:shadow-lg"
-                  : "opacity-60 grayscale hover:opacity-80"
-              )}
-            >
-              {!location.is_active && (
-                <div className="absolute top-3 right-3 z-10">
-                  <Badge variant="secondary" className="bg-gray-200 text-gray-700">
-                    Inactiva
-                  </Badge>
-                </div>
-              )}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {filteredLocations.map((location) => {
+            // AHORA PASAMOS EL ARRAY DE CAMPUS TAMBIÉN
+            const themeColor = getColorForCampus(location.campus_id, campuses);
 
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="w-14 h-14 rounded-lg flex items-center justify-center bg-blue-100">
-                    <MapPin className="w-7 h-7 text-blue-600" strokeWidth={2} />
-                  </div>
-
-                  <div className="flex gap-1">
-                    <Link href={`/locations/${location.id}/edit`}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-gray-600 hover:text-blue-600"
-                        title="Editar"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    </Link>
-                    {location.is_active ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-gray-600 hover:text-red-600"
-                        onClick={() => setLocationToToggle(location)}
-                        title="Desactivar"
-                      >
-                        <PowerOff className="w-4 h-4" />
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-gray-600 hover:text-green-600"
-                        onClick={() => setLocationToToggle(location)}
-                        title="Reactivar"
-                      >
-                        <Power className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                <h3 className="text-xl font-bold text-gray-900 mb-1">
-                  {location.name}
-                </h3>
-                {location.sector && (
-                  <p className="text-sm font-medium text-blue-600 mb-2">
-                    Sector: {location.sector}
-                  </p>
+            return (
+              <div
+                key={location.id}
+                className={cn(
+                  "group relative bg-white rounded-3xl p-8 border transition-all duration-300 overflow-hidden",
+                  location.is_active
+                    ? "border-slate-100 hover:border-blue-100 hover:shadow-xl hover:shadow-blue-900/5 hover:-translate-y-1"
+                    : "border-dashed border-slate-200 bg-slate-50/50 grayscale-[50%] hover:grayscale-0"
                 )}
-                <p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5rem]">
-                  {location.description || "Sin descripción"}
-                </p>
+              >
+                {/* DETALLE PERRÍSIMO: Aura y línea de color por Campus */}
+                <div 
+                  className="absolute top-0 left-0 w-full h-2 transition-all duration-300 group-hover:h-3"
+                  style={{ backgroundColor: themeColor }} 
+                />
+                <div 
+                  className="absolute top-0 left-0 w-full h-32 opacity-10 blur-3xl pointer-events-none"
+                  style={{ backgroundColor: themeColor }} 
+                />
 
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-gray-500" />
-                    <span className="text-xs font-semibold text-gray-700">
-                      {location.campus?.name || "Sin campus"}
+                {!location.is_active && (
+                  <div className="absolute top-4 right-4 z-10">
+                    <span className="bg-rose-500 text-white text-xs font-black px-4 py-1.5 rounded-full shadow-md shadow-rose-500/20">
+                      INACTIVA
                     </span>
                   </div>
+                )}
+
+                {/* Cabecera de la Tarjeta */}
+                <div className="flex justify-between items-start mb-6 pt-2">
+                  <div className="flex gap-4 items-center">
+                    <div 
+                      className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm relative z-10"
+                      style={{ backgroundColor: `${themeColor}15` }}
+                    >
+                      <MapPin className="w-7 h-7" style={{ color: themeColor }} strokeWidth={2.5} />
+                    </div>
+                    <div className="min-w-0 pr-4">
+                      <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-0.5 flex items-center gap-1">
+                        <Navigation className="w-3 h-3" /> Sector
+                      </p>
+                      <h4 className="font-bold text-slate-700 truncate" style={{ color: themeColor }}>
+                        {location.sector || "Sin sector"}
+                      </h4>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cuerpo de la Tarjeta */}
+                <div className="mb-6 relative z-10">
+                  <h3 className="text-2xl font-black text-slate-900 mb-2 truncate" title={location.name}>
+                    {location.name}
+                  </h3>
+                  <p className="text-sm text-slate-500 font-medium line-clamp-2 min-h-[2.5rem]">
+                    {location.description || "Ninguna descripción registrada para este punto."}
+                  </p>
+                </div>
+
+                {/* Footer de la Tarjeta (Métricas y Campus) */}
+                <div className="flex items-center justify-between pt-5 border-t border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+                      <Building2 className="w-4 h-4 text-slate-500" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase tracking-widest font-bold text-slate-400 leading-none">Campus</span>
+                      <span className="text-sm font-bold text-slate-800 leading-tight">
+                        {location.campus?.name || "Sin asignar"}
+                      </span>
+                    </div>
+                  </div>
+                  
                   {location.location_type && (
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="bg-white text-slate-600 border-slate-200 font-bold px-3 py-1">
                       {location.location_type}
                     </Badge>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
 
-          {/* Card de "Nueva Ubicación" - solo si no es filtro de inactivas */}
+                {/* BOTONES FLOTANTES AL HOVER */}
+                <div className="absolute top-6 right-6 flex gap-1.5 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-all z-20">
+                  <Link href={`/locations/${location.id}/edit`}>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full bg-white shadow-md shadow-slate-200/50 text-slate-600 hover:text-blue-600 hover:bg-blue-50 border border-slate-100">
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setLocationToToggle(location)}
+                    className={cn(
+                      "h-10 w-10 rounded-full bg-white shadow-md shadow-slate-200/50 border border-slate-100",
+                      location.is_active ? "text-slate-600 hover:text-rose-600 hover:bg-rose-50" : "text-slate-600 hover:text-emerald-600 hover:bg-emerald-50"
+                    )}
+                  >
+                    {location.is_active ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Tarjeta para Agregar Nueva Ubicación */}
           {filter !== "inactive" && (
-            <Link href="/locations/new">
-              <Card className="border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer h-full">
-                <CardContent className="flex flex-col items-center justify-center py-12 h-full">
-                  <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-3">
-                    <Plus className="w-7 h-7 text-gray-400" />
-                  </div>
-                  <p className="text-gray-500 font-semibold">Nueva Ubicación</p>
-                </CardContent>
-              </Card>
+            <Link href="/locations/new" className="block h-full group">
+              <div className="h-full min-h-[300px] border-2 border-dashed border-slate-200 hover:border-blue-400 bg-transparent hover:bg-blue-50/50 transition-colors rounded-3xl flex flex-col items-center justify-center p-8 text-center cursor-pointer">
+                <div className="w-20 h-20 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center mb-5 group-hover:scale-110 group-hover:bg-blue-600 transition-all">
+                  <Plus className="w-10 h-10 text-slate-400 group-hover:text-white transition-colors" />
+                </div>
+                <h3 className="text-xl font-black text-slate-700 group-hover:text-blue-700">Trazar Ubicación</h3>
+                <p className="text-base text-slate-500 font-medium mt-2">Agrega un nuevo punto de recolección</p>
+              </div>
             </Link>
           )}
         </div>
       )}
 
-      {/* Footer con stats */}
-      {!loading && locations.length > 0 && (
-        <div className="flex items-center justify-between text-sm text-gray-500 pt-4 border-t">
-          <div className="flex items-center gap-4">
-            <span>
-              <span className="font-semibold text-green-700">{activeCount}</span> Activas
-            </span>
-            {inactiveCount > 0 && (
-              <span>
-                <span className="font-semibold text-gray-700">{inactiveCount}</span> Inactivas
-              </span>
-            )}
-            <span className="text-gray-400">|</span>
-            <span>
-              <span className="font-semibold text-gray-900">{locations.length}</span> Total
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4" />
-            <span>{campuses.length} Campus</span>
-          </div>
-        </div>
-      )}
-
-      {/* Dialog de confirmación */}
+      {/* MODAL DE CONFIRMACIÓN */}
       <AlertDialog open={!!locationToToggle} onOpenChange={() => setLocationToToggle(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              {locationToToggle?.is_active ? (
-                <>
-                  <AlertTriangle className="w-5 h-5 text-red-600" />
-                  ¿Desactivar ubicación?
-                </>
-              ) : (
-                <>
-                  <Power className="w-5 h-5 text-green-600" />
-                  ¿Reactivar ubicación?
-                </>
-              )}
+        <AlertDialogContent className="rounded-3xl p-8 border-0 shadow-2xl max-w-md">
+          <AlertDialogHeader className="mb-4">
+            <div className={cn(
+              "w-12 h-12 rounded-full flex items-center justify-center mb-4",
+              locationToToggle?.is_active ? "bg-rose-100 text-rose-600" : "bg-emerald-100 text-emerald-600"
+            )}>
+              {locationToToggle?.is_active ? <AlertTriangle className="w-6 h-6" /> : <Power className="w-6 h-6" />}
+            </div>
+            <AlertDialogTitle className="text-2xl font-black text-slate-900">
+              {locationToToggle?.is_active ? "¿Desactivar ubicación?" : "Reactivar ubicación"}
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-base text-slate-600 font-medium pt-2">
               {locationToToggle?.is_active ? (
                 <>
-                  La ubicación <strong>"{locationToToggle?.name}"</strong> dejará de
-                  aparecer en las listas operativas, pero los contenedores y reportes
-                  asociados se mantendrán intactos.
+                  La ubicación <strong className="text-slate-900">"{locationToToggle?.name}"</strong> dejará de estar disponible operativamente, pero los contenedores y el historial de recolección en esta zona se mantendrán protegidos en la base de datos.
                 </>
               ) : (
                 <>
-                  La ubicación <strong>"{locationToToggle?.name}"</strong> volverá a
-                  estar disponible en todas las listas operativas.
+                  La ubicación <strong className="text-slate-900">"{locationToToggle?.name}"</strong> volverá a estar disponible para asignar contenedores y trazar rutas.
                 </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={toggling}>Cancelar</AlertDialogCancel>
+          <AlertDialogFooter className="gap-3 sm:gap-0 mt-6">
+            <AlertDialogCancel disabled={toggling} className="rounded-full px-6 font-bold border-slate-200 hover:bg-slate-50">
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleToggleActive}
               disabled={toggling}
-              className={
-                locationToToggle?.is_active
-                  ? "bg-red-600 hover:bg-red-700"
-                  : "bg-green-600 hover:bg-green-700"
-              }
+              className={cn(
+                "rounded-full px-8 font-bold text-white shadow-md",
+                locationToToggle?.is_active ? "bg-rose-600 hover:bg-rose-700" : "bg-emerald-600 hover:bg-emerald-700"
+              )}
             >
               {toggling ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Procesando...
-                </>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Procesando...</>
               ) : locationToToggle?.is_active ? (
-                "Sí, desactivar"
+                "Desactivar"
               ) : (
-                "Sí, reactivar"
+                "Reactivar"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

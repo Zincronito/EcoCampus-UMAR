@@ -12,10 +12,11 @@ import {
   Power,
   AlertTriangle,
   Search,
+  Droplets,
+  Layers
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -51,7 +52,6 @@ export default function CategoriesPage() {
   const loadCategories = async () => {
     try {
       setLoading(true);
-      // Traemos TODAS (activas e inactivas)
       const data = await categoriesAPI.getAll(false);
       setCategories(data);
     } catch (error: any) {
@@ -64,37 +64,26 @@ export default function CategoriesPage() {
 
   const handleToggleActive = async () => {
     if (!categoryToToggle) return;
-
     const isActivating = !categoryToToggle.is_active;
-
     try {
       setToggling(true);
-
       if (isActivating) {
-        // Reactivar: usar PATCH para cambiar is_active a true
         await categoriesAPI.update(categoryToToggle.id, { is_active: true });
-        toast.success(`Categoría "${categoryToToggle.name}" reactivada`);
+        toast.success(`Categoría "${categoryToToggle.name}" reactivada con éxito`);
       } else {
-        // Desactivar: usar DELETE (soft delete)
         await categoriesAPI.delete(categoryToToggle.id);
         toast.success(`Categoría "${categoryToToggle.name}" desactivada`);
       }
-
       setCategoryToToggle(null);
       await loadCategories();
     } catch (error: any) {
-      toast.error(
-        isActivating
-          ? "Error al reactivar la categoría"
-          : "Error al desactivar la categoría"
-      );
+      toast.error(isActivating ? "Error al reactivar" : "Error al desactivar");
       console.error(error);
     } finally {
       setToggling(false);
     }
   };
 
-  // Filtrado combinado: búsqueda + estado activo/inactivo
   const filteredCategories = categories.filter((cat) => {
     const matchesSearch = cat.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter =
@@ -104,302 +93,244 @@ export default function CategoriesPage() {
     return matchesSearch && matchesFilter;
   });
 
-  // Stats
   const activeCount = categories.filter((c) => c.is_active).length;
   const inactiveCount = categories.filter((c) => !c.is_active).length;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gestión de Categorías</h1>
-          <p className="text-gray-600 mt-1">
-            Administra las clasificaciones de residuos y sus protocolos de recolección.
+    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-8 font-sans">
+      
+      {/* HEADER AJUSTADO (Más compacto) */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-5 mb-6">
+        <div className="space-y-2">
+          <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 px-3 py-1 font-bold tracking-wide uppercase">
+            Catálogo del Sistema
+          </Badge>
+          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900">
+            Categorías de Residuos
+          </h1>
+          <p className="text-slate-500 font-medium text-base max-w-xl">
+            Controla las clasificaciones y métricas base para la recolección en todo el campus.
           </p>
         </div>
+        
         <Link href="/categories/new">
-          <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-5 h-5 mr-2" />
-            Dar de alta categoría
+          <Button className="h-12 px-6 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-base shadow-lg shadow-blue-600/20 transition-all hover:scale-105 active:scale-95">
+            <Plus className="w-5 h-5 mr-2" strokeWidth={3} />
+            Crear Categoría
           </Button>
         </Link>
       </div>
 
-      {/* Búsqueda y Filtros */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+      {/* BARRA DE BÚSQUEDA Y FILTROS */}
+      <div className="bg-white p-2 rounded-full shadow-sm border border-slate-100 flex flex-col md:flex-row items-center gap-2 mb-10">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
           <Input
             type="text"
-            placeholder="Buscar categoría..."
+            placeholder="Busca por nombre o descripción..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="w-full pl-12 pr-6 py-6 rounded-full border-none bg-transparent shadow-none focus-visible:ring-0 text-lg font-medium text-slate-700 placeholder:text-slate-400"
           />
         </div>
-
-        {/* Filtros */}
-        <div className="flex gap-2">
+        
+        <div className="flex gap-2 w-full md:w-auto p-1 overflow-x-auto">
           <Button
-            variant={filter === "all" ? "default" : "outline"}
-            size="sm"
             onClick={() => setFilter("all")}
-            className={filter === "all" ? "bg-blue-600 hover:bg-blue-700" : ""}
+            className={cn(
+              "rounded-full px-6 py-6 font-bold transition-colors",
+              filter === "all" ? "bg-slate-900 text-white hover:bg-slate-800" : "bg-transparent text-slate-500 hover:bg-slate-100"
+            )}
           >
             Todas ({categories.length})
           </Button>
           <Button
-            variant={filter === "active" ? "default" : "outline"}
-            size="sm"
             onClick={() => setFilter("active")}
-            className={filter === "active" ? "bg-green-600 hover:bg-green-700" : ""}
+            className={cn(
+              "rounded-full px-6 py-6 font-bold transition-colors",
+              filter === "active" ? "bg-emerald-500 text-white hover:bg-emerald-600" : "bg-transparent text-slate-500 hover:bg-slate-100"
+            )}
           >
             Activas ({activeCount})
           </Button>
           <Button
-            variant={filter === "inactive" ? "default" : "outline"}
-            size="sm"
             onClick={() => setFilter("inactive")}
-            className={filter === "inactive" ? "bg-gray-600 hover:bg-gray-700" : ""}
+            className={cn(
+              "rounded-full px-6 py-6 font-bold transition-colors",
+              filter === "inactive" ? "bg-rose-500 text-white hover:bg-rose-600" : "bg-transparent text-slate-500 hover:bg-slate-100"
+            )}
           >
             Inactivas ({inactiveCount})
           </Button>
         </div>
       </div>
 
-      {/* Loading state */}
+      {/* ESTADO DE CARGA Y VACÍOS */}
       {loading && (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-          <span className="ml-3 text-gray-600">Cargando categorías...</span>
+        <div className="flex flex-col items-center justify-center py-24">
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
+          <p className="text-slate-500 font-bold text-lg">Cargando base de datos...</p>
         </div>
       )}
 
-      {/* Empty states */}
       {!loading && filteredCategories.length === 0 && categories.length > 0 && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Search className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500">No se encontraron categorías con los filtros actuales</p>
-          </CardContent>
-        </Card>
+        <div className="bg-white rounded-3xl p-16 text-center border border-slate-100 shadow-sm flex flex-col items-center justify-center max-w-2xl mx-auto mt-12">
+          <div className="bg-slate-50 p-6 rounded-full mb-6">
+            <Search className="w-12 h-12 text-slate-300" strokeWidth={3} />
+          </div>
+          <h3 className="text-2xl font-black text-slate-900 mb-2">Sin resultados</h3>
+          <p className="text-slate-500 font-medium">No encontramos ninguna categoría que coincida con tu búsqueda actual.</p>
+        </div>
       )}
 
-      {!loading && categories.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Leaf className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500 mb-4">No hay categorías registradas</p>
-            <Link href="/categories/new">
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Crear primera categoría
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Grid de categorías */}
+      {/* GRID MÁGICO DE CATEGORÍAS (Máximo 3 columnas y tarjetas más espaciosas) */}
       {!loading && filteredCategories.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredCategories.map((category) => (
-            <Card
+            <div
               key={category.id}
               className={cn(
-                "transition-all relative",
-                category.is_active
-                  ? "hover:shadow-lg"
-                  : "opacity-60 grayscale hover:opacity-80"
+                "group relative bg-white rounded-3xl p-8 border transition-all duration-300",
+                category.is_active 
+                  ? "border-slate-100 hover:border-blue-100 hover:shadow-xl hover:shadow-blue-900/5 hover:-translate-y-1" 
+                  : "border-dashed border-slate-200 bg-slate-50/50 grayscale-[50%] hover:grayscale-0"
               )}
             >
-              {/* Badge de inactivo */}
+              {/* Badge Inactivo flotante */}
               {!category.is_active && (
-                <div className="absolute top-3 right-3 z-10">
-                  <Badge variant="secondary" className="bg-gray-200 text-gray-700">
-                    Inactiva
-                  </Badge>
+                <div className="absolute -top-3 -right-3 z-10">
+                  <span className="bg-rose-500 text-white text-xs font-black px-4 py-1.5 rounded-full shadow-md shadow-rose-500/20">
+                    INACTIVA
+                  </span>
                 </div>
               )}
 
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  {/* Icon con color de fondo */}
-                  <div
-                    className="w-14 h-14 rounded-lg flex items-center justify-center"
-                    style={{
-                      backgroundColor: `${category.color}20`,
-                    }}
-                  >
-                    <CategoryIcon
-                      icon={category.icon}
-                      size={28}
-                      color={category.color}
-                    />
-                  </div>
-
-                  {/* Botones de acción */}
-                  <div className="flex gap-1">
-                    <Link href={`/categories/${category.id}/edit`}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-gray-600 hover:text-blue-600"
-                        title="Editar"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    </Link>
-                    {category.is_active ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-gray-600 hover:text-red-600"
-                        onClick={() => setCategoryToToggle(category)}
-                        title="Desactivar"
-                      >
-                        <PowerOff className="w-4 h-4" />
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-gray-600 hover:text-green-600"
-                        onClick={() => setCategoryToToggle(category)}
-                        title="Reactivar"
-                      >
-                        <Power className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+              {/* Cabecera de la Tarjeta */}
+              <div className="flex justify-between items-start mb-6">
+                <div 
+                  className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-sm"
+                  style={{ backgroundColor: `${category.color}15` }}
+                >
+                  <CategoryIcon 
+                    icon={category.icon} 
+                    size={40} 
+                    color={category.color} 
+                  />
                 </div>
+                
+                {/* Botones de Acción */}
+                <div className="flex gap-1.5 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Link href={`/categories/${category.id}/edit`}>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full bg-slate-50 text-slate-600 hover:text-blue-600 hover:bg-blue-50">
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setCategoryToToggle(category)}
+                    className={cn(
+                      "h-10 w-10 rounded-full bg-slate-50",
+                      category.is_active ? "text-slate-600 hover:text-rose-600 hover:bg-rose-50" : "text-slate-600 hover:text-emerald-600 hover:bg-emerald-50"
+                    )}
+                  >
+                    {category.is_active ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </div>
 
-                {/* Información */}
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
+              {/* Cuerpo de la Tarjeta */}
+              <div className="mb-6">
+                <h3 className="text-2xl font-black text-slate-900 mb-2 truncate" title={category.name}>
                   {category.name}
                 </h3>
-                <p className="text-sm text-gray-600 mb-4 line-clamp-3 min-h-[3.75rem]">
-                  {category.description || "Sin descripción"}
+                <p className="text-base text-slate-500 font-medium line-clamp-2 min-h-[3rem]">
+                  {category.description || "Sin descripción proporcionada."}
                 </p>
+              </div>
 
-                {/* Color y densidad */}
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+              {/* Footer de la Tarjeta (Métricas) */}
+              <div className="grid grid-cols-2 gap-4 pt-6 border-t border-slate-100">
+                <div className="bg-slate-50 rounded-xl p-3">
+                  <p className="text-[11px] uppercase tracking-widest font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
+                    <Droplets className="w-3.5 h-3.5" /> Color
+                  </p>
                   <div className="flex items-center gap-2">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: category.color }}
-                    />
-                    <span className="text-xs font-semibold text-gray-500 uppercase">
-                      {category.color}
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Densidad:{" "}
-                    <span className="font-semibold text-gray-900">
-                      {category.density_kg_per_cubic_meter
-                        ? `${category.density_kg_per_cubic_meter} kg/m³`
-                        : "Sin definir"}
-                    </span>
+                    <div className="w-4 h-4 rounded-full shadow-sm" style={{ backgroundColor: category.color }} />
+                    <span className="text-sm font-bold text-slate-700 truncate">{category.color}</span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+                
+                <div className="bg-slate-50 rounded-xl p-3">
+                  <p className="text-[11px] uppercase tracking-widest font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5" /> Densidad
+                  </p>
+                  <span className="text-sm font-bold text-slate-700">
+                    {category.density_kg_per_cubic_meter ? `${category.density_kg_per_cubic_meter} kg/m³` : "N/D"}
+                  </span>
+                </div>
+              </div>
+            </div>
           ))}
 
-          {/* Card de "Nueva Categoría" - solo si estamos en "Todas" o "Activas" */}
+          {/* Tarjeta para Agregar Nueva Categoría */}
           {filter !== "inactive" && (
-            <Link href="/categories/new">
-              <Card className="border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer h-full">
-                <CardContent className="flex flex-col items-center justify-center py-12 h-full">
-                  <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-3">
-                    <Plus className="w-7 h-7 text-gray-400" />
-                  </div>
-                  <p className="text-gray-500 font-semibold">Nueva Categoría</p>
-                </CardContent>
-              </Card>
+            <Link href="/categories/new" className="block h-full group">
+              <div className="h-full min-h-[340px] border-2 border-dashed border-slate-200 hover:border-blue-400 bg-transparent hover:bg-blue-50/50 transition-colors rounded-3xl flex flex-col items-center justify-center p-8 text-center cursor-pointer">
+                <div className="w-20 h-20 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center mb-5 group-hover:scale-110 group-hover:bg-blue-600 transition-all">
+                  <Plus className="w-10 h-10 text-slate-400 group-hover:text-white transition-colors" />
+                </div>
+                <h3 className="text-xl font-black text-slate-700 group-hover:text-blue-700">Nueva Categoría</h3>
+                <p className="text-base text-slate-500 font-medium mt-2">Configura un nuevo tipo de residuo</p>
+              </div>
             </Link>
           )}
         </div>
       )}
 
-      {/* Footer con stats */}
-      {!loading && categories.length > 0 && (
-        <div className="flex items-center justify-between text-sm text-gray-500 pt-4 border-t">
-          <div className="flex items-center gap-4">
-            <span>
-              <span className="font-semibold text-green-700">{activeCount}</span> Activas
-            </span>
-            {inactiveCount > 0 && (
-              <span>
-                <span className="font-semibold text-gray-700">{inactiveCount}</span> Inactivas
-              </span>
-            )}
-            <span className="text-gray-400">|</span>
-            <span>
-              <span className="font-semibold text-gray-900">{categories.length}</span> Total
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span>Sistema Operativo</span>
-          </div>
-        </div>
-      )}
-
-      {/* Dialog de confirmación */}
+      {/* MODAL DE CONFIRMACIÓN */}
       <AlertDialog open={!!categoryToToggle} onOpenChange={() => setCategoryToToggle(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              {categoryToToggle?.is_active ? (
-                <>
-                  <AlertTriangle className="w-5 h-5 text-red-600" />
-                  ¿Desactivar categoría?
-                </>
-              ) : (
-                <>
-                  <Power className="w-5 h-5 text-green-600" />
-                  ¿Reactivar categoría?
-                </>
-              )}
+        <AlertDialogContent className="rounded-3xl p-8 border-0 shadow-2xl max-w-md">
+          <AlertDialogHeader className="mb-4">
+            <div className={cn(
+              "w-12 h-12 rounded-full flex items-center justify-center mb-4",
+              categoryToToggle?.is_active ? "bg-rose-100 text-rose-600" : "bg-emerald-100 text-emerald-600"
+            )}>
+              {categoryToToggle?.is_active ? <AlertTriangle className="w-6 h-6" /> : <Power className="w-6 h-6" />}
+            </div>
+            <AlertDialogTitle className="text-2xl font-black text-slate-900">
+              {categoryToToggle?.is_active ? "¿Desactivar categoría?" : "Reactivar categoría"}
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-base text-slate-600 font-medium pt-2">
               {categoryToToggle?.is_active ? (
                 <>
-                  La categoría <strong>"{categoryToToggle?.name}"</strong> dejará de
-                  aparecer en las listas operativas, pero todos los datos asociados (contenedores
-                  y reportes históricos) se mantendrán intactos. Podrás reactivarla en cualquier
-                  momento.
+                  La categoría <strong className="text-slate-900">"{categoryToToggle?.name}"</strong> dejará de estar disponible para nuevos reportes, pero su historial se mantendrá intacto.
                 </>
               ) : (
                 <>
-                  La categoría <strong>"{categoryToToggle?.name}"</strong> volverá a estar
-                  disponible en todas las listas operativas del sistema.
+                  La categoría <strong className="text-slate-900">"{categoryToToggle?.name}"</strong> volverá a estar activa y visible en todas las operaciones del campus.
                 </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={toggling}>Cancelar</AlertDialogCancel>
+          <AlertDialogFooter className="gap-3 sm:gap-0 mt-6">
+            <AlertDialogCancel disabled={toggling} className="rounded-full px-6 font-bold border-slate-200 hover:bg-slate-50">
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleToggleActive}
               disabled={toggling}
-              className={
-                categoryToToggle?.is_active
-                  ? "bg-red-600 hover:bg-red-700"
-                  : "bg-green-600 hover:bg-green-700"
-              }
+              className={cn(
+                "rounded-full px-8 font-bold text-white shadow-md",
+                categoryToToggle?.is_active ? "bg-rose-600 hover:bg-rose-700" : "bg-emerald-600 hover:bg-emerald-700"
+              )}
             >
               {toggling ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Procesando...
-                </>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Procesando...</>
               ) : categoryToToggle?.is_active ? (
-                "Sí, desactivar"
+                "Desactivar"
               ) : (
-                "Sí, reactivar"
+                "Reactivar"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
