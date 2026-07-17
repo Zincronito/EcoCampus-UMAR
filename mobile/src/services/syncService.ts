@@ -27,7 +27,14 @@ async function apiRequest(
   });
 
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    let detail = '';
+    try {
+      const errorBody = await response.json();
+      detail = errorBody.detail ? JSON.stringify(errorBody.detail) : JSON.stringify(errorBody);
+    } catch {
+      // No pudo parsear JSON
+    }
+    throw new Error(`HTTP ${response.status}: ${detail || response.statusText}`);
   }
   return response.json();
 }
@@ -75,35 +82,61 @@ export const syncService = {
       throw new Error(`Error subiendo foto: HTTP ${response.status}`);
     }
     const data = await response.json();
-    return data.url;
+    // El backend devuelve { photo_url, filename }
+    if (!data.photo_url) {
+      throw new Error("El backend no devolvió photo_url");
+    }
+    return data.photo_url;
   },
 
   /** Procesa un item de la cola */
-  async processItem(item: QueuedItem): Promise<boolean> {
+  async processItemWithResult(item: QueuedItem): Promise<{ success: boolean; remoteId?: string }> {
     try {
-      // Si tiene foto local, primero la subimos
-      let photoUrl: string | undefined;
-      if (item.photoUri) {
-        photoUrl = await this.uploadPhoto(item.photoUri);
+      let payloadToSend = { ...item.payload };
+
+      // Detectar si el payload trae una URI local de foto (file://...)
+      const hasLocalPhoto = payloadToSend.photo_url?.startsWith('file://');
+
+      if (hasLocalPhoto) {
+        console.log(`📸 Subiendo foto local del item ${item.id}...`);
+        try {
+          const remotePhotoUrl = await this.uploadPhoto(payloadToSend.photo_url);
+          payloadToSend.photo_url = remotePhotoUrl;
+          console.log(`✅ Foto subida: ${remotePhotoUrl}`);
+        } catch (photoError) {
+          console.error(`❌ Falló subida de foto:`, photoError);
+          return { success: false };
+        }
       }
 
-      // Preparamos el payload final con la URL de foto (si aplica)
-      const finalPayload = photoUrl
-        ? { ...item.payload, photo_url: photoUrl }
-        : item.payload;
+      // Si es una incidencia con collection_record_id local todavía, esperar
+      if (item.type === 'incident' && payloadToSend.collection_record_id?.startsWith?.('local_')) {
+        console.warn(`⏸️ Incidencia ${item.id} apunta a un record local que aún no se ha subido. Esperando...`);
+        return { success: false };
+      }
 
-      // Enviamos el registro
-      await apiRequest(item.endpoint, {
+      // Enviamos el registro/incidencia
+      console.log(`📤 Enviando a ${item.endpoint}:`, JSON.stringify(payloadToSend));
+      const result = await apiRequest(item.endpoint, {
         method: 'POST',
-        body: JSON.stringify(finalPayload),
+        body: JSON.stringify(payloadToSend),
       });
-      return true;
+      console.log(`✅ Respuesta del backend:`, result);
+
+      return { success: true, remoteId: result?.id };
     } catch (error) {
       console.error(`Error procesando item ${item.id}:`, error);
-      return false;
+      return { success: false };
     }
   },
 
+  // Alias compatible con la interfaz anterior
+  async processItem(item: QueuedItem): Promise<boolean> {
+    const result = await this.processItemWithResult(item);
+    return result.success;
+  },
+
+  /** Procesa TODOS los items pendientes en la cola */
   /** Procesa TODOS los items pendientes en la cola */
   async flushQueue(): Promise<{ success: number; failed: number }> {
     if (isSyncing) {
@@ -123,8 +156,19 @@ export const syncService = {
 
     try {
       const queue = await offlineQueue.getAll();
-      console.log(`🔍 Items encontrados en cola: ${JSON.stringify(queue.map(i => ({ id: i.id, endpoint: i.endpoint })))}`);
-      console.log(`📤 Sincronizando ${queue.length} items pendientes...`);
+      // Ordenar: primero records, luego incidents (que dependen de records)
+      queue.sort((a, b) => {
+        if (a.type === 'record' && b.type !== 'record') return -1;
+        if (a.type !== 'record' && b.type === 'record') return 1;
+        return 0;
+      });
+      console.log(`📤 Sincronizando ${queue.length} items pendientes (ordenados):`);
+      queue.forEach((it, idx) => {
+        console.log(`  ${idx + 1}. [${it.type}] ${it.id} → ${it.endpoint}${it.payload?.collection_record_id ? ' (record_id=' + it.payload.collection_record_id + ')' : ''}`);
+      });
+
+      // Mapa de reemplazos de IDs locales → remotos (para incidencias dentro del mismo flush)
+      const idReplacements: Record<string, string> = {};
 
       for (const item of queue) {
         // Si un item ha fallado más de 5 veces, lo saltamos
@@ -134,12 +178,30 @@ export const syncService = {
           continue;
         }
 
-        const ok = await this.processItem(item);
-        if (ok) {
-          await offlineQueue.remove(item.id);
+        // Aplicar reemplazos de IDs pendientes ANTES de procesar
+        const workingItem = { ...item };
+        if (workingItem.payload?.collection_record_id && idReplacements[workingItem.payload.collection_record_id]) {
+          const localId = workingItem.payload.collection_record_id;
+          const remoteId = idReplacements[localId];
+          console.log(`🔀 Aplicando reemplazo en item ${workingItem.id}: ${localId} → ${remoteId}`);
+          workingItem.payload = { ...workingItem.payload, collection_record_id: remoteId };
+        }
+
+        // ⭐ Eliminar del storage ANTES de procesar para evitar duplicados
+        await offlineQueue.remove(item.id);
+
+        const result = await this.processItemWithResult(workingItem);
+        if (result.success) {
           success++;
+          // Si el item era un record y devolvió un UUID real, guardar el reemplazo
+          if (workingItem.type === 'record' && result.remoteId && workingItem.id.startsWith('local_')) {
+            idReplacements[workingItem.id] = result.remoteId;
+            console.log(`💾 ID mapeado en memoria: ${workingItem.id} → ${result.remoteId}`);
+          }
         } else {
-          await offlineQueue.incrementRetries(item.id);
+          // Si falla, lo volvemos a meter en la cola con retries incrementado
+          const requeuedItem = { ...item, retries: item.retries + 1 };
+          await offlineQueue.requeue(requeuedItem);
           failed++;
         }
       }
@@ -157,10 +219,24 @@ export const syncService = {
   startAutoSync(): () => void {
     console.log('🔄 Iniciando auto-sync de cola offline');
 
+    let lastState: boolean | null = null;
+    let debounceTimer: any = null;
+
     const unsubscribe = NetInfo.addEventListener(async (state) => {
-      if (state.isConnected && state.isInternetReachable) {
-        console.log('📶 Internet detectado, sincronizando cola...');
-        await this.flushQueue();
+      const isOnline = !!(state.isConnected && state.isInternetReachable);
+
+      // Solo actuamos si el estado cambió de offline a online
+      if (isOnline && lastState !== true) {
+        lastState = true;
+
+        // Debounce: esperamos 1 segundo para evitar disparos múltiples
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
+          console.log('📶 Internet estable detectado, sincronizando cola...');
+          await this.flushQueue();
+        }, 1000);
+      } else if (!isOnline) {
+        lastState = false;
       }
     });
 

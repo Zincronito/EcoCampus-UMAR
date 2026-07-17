@@ -14,6 +14,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Svg, Path, G } from "react-native-svg";
 import { Feather } from "@expo/vector-icons";
 import { authService } from "../services/authService";
+import {catalogService} from "../services/catalogService";
 
 // Interfaces para tipado estricto
 interface LoginResult {
@@ -53,6 +54,15 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       const result = await authService.login(employeeId, pin);
       await AsyncStorage.setItem("userToken", result.token);
       await AsyncStorage.setItem("user", JSON.stringify(result.user));
+
+      // Descargar catálogo (contenedores, categorías, campus) para uso offline
+      console.log("📥 Descargando catálogo para uso offline...");
+      const catalogResult = await catalogService.downloadAll();
+      if (!catalogResult.success) {
+        console.warn("⚠️ No se pudo descargar el catálogo:", catalogResult.error);
+        // No bloqueamos el login si falla el catálogo, solo avisamos
+      }
+
       onLoginSuccess(result);
     } catch (error: any) {
       Alert.alert("Acceso Denegado", error.message || "Credenciales incorrectas o problema de conexión.");

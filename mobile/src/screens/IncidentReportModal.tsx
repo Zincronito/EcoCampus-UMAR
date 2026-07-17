@@ -206,17 +206,29 @@ export default function IncidentReportModal({
     try {
       setSubmitting(true);
 
+      // Detectar si hay internet
+      const NetInfo = require("@react-native-community/netinfo").default;
+      const netState = await NetInfo.fetch();
+      const isOnline = netState.isConnected && netState.isInternetReachable;
+
       let photoUrl: string | null = null;
-      if (photoUri) {
+
+      // Solo intentamos subir la foto si hay internet
+      // Si no hay, guardamos la URI local y el syncService la subirá luego
+      if (photoUri && isOnline) {
         try {
+          console.log("📸 Subiendo foto...");
           photoUrl = await fileService.uploadIncidentPhoto(photoUri);
+          console.log("✅ Foto subida:", photoUrl);
         } catch (photoError: any) {
-          Alert.alert("Error", "No se pudo subir la foto: " + photoError.message);
-          setSubmitting(false);
-          return;
+          console.warn("⚠️ No se pudo subir la foto, se guardará URI local para reintentar:", photoError.message);
+          photoUrl = null;
         }
+      } else if (photoUri && !isOnline) {
+        console.log("📴 Sin conexión - foto quedará local hasta que vuelva internet");
       }
 
+      // Armar el payload del registro de recolección
       const recordPayload = {
         gross_weight: formData.gross_weight > 0 ? formData.gross_weight : null,
         net_weight: formData.net_weight > 0 ? formData.net_weight : null,
@@ -228,13 +240,17 @@ export default function IncidentReportModal({
         collector_id: collectorId,
       };
 
-
       const savedRecord = await recordService.create(recordPayload as any);
+      console.log("🔍 savedRecord:", JSON.stringify(savedRecord));
+      console.log("🔍 savedRecord.id:", savedRecord.id);
+      console.log("🔍 savedRecord._offline:", savedRecord._offline);
 
       const incidentPayload = {
         description: description.trim(),
         quick_tag: description,
-        photo_url: photoUrl,
+        // Si tenemos URL remota la usamos, si no, mandamos la URI local
+        // El syncService detectará photo_url que empiece con file:// y la subirá antes
+        photo_url: photoUrl || photoUri,
         container_id: containerId,
         reported_by_id: collectorId,
         collection_record_id: savedRecord.id,
@@ -264,8 +280,8 @@ export default function IncidentReportModal({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView 
-        style={styles.container} 
+      <KeyboardAvoidingView
+        style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         {/* Header Moderno */}
@@ -394,7 +410,7 @@ export default function IncidentReportModal({
           <View style={{ height: 40 }} />
         </ScrollView>
 
-        
+
       </KeyboardAvoidingView>
     </Modal>
   );

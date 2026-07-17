@@ -60,4 +60,23 @@ export const offlineQueue = {
   async clear(): Promise<void> {
     await AsyncStorage.removeItem(QUEUE_KEY);
   },
+  /** Vuelve a meter un item en la cola (para reintentos) */
+  async requeue(item: QueuedItem): Promise<void> {
+    const queue = await this.getAll();
+    queue.push(item);
+    await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+  },
+  /** Reemplaza IDs locales por IDs remotos en todos los items pendientes */
+  async replaceLocalId(localId: string, remoteId: string): Promise<void> {
+    const queue = await this.getAll();
+    const updated = queue.map((item) => {
+      const payload = { ...item.payload };
+      // Reemplaza collection_record_id si coincide
+      if (payload.collection_record_id === localId) {
+        payload.collection_record_id = remoteId;
+      }
+      return { ...item, payload };
+    });
+    await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(updated));
+  },
 };

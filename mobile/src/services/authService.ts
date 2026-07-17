@@ -3,6 +3,15 @@ import { API_URL } from "../config";
 // ────────────────────────────────────────────────────────────
 // AUTENTICACIÓN
 // ────────────────────────────────────────────────────────────
+// Helper para hacer fetch con timeout (útil para detectar offline real)
+async function fetchWithTimeout(url: string, options: any, timeoutMs: number = 4000): Promise<Response> {
+  return Promise.race([
+    fetch(url, options),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Request timeout")), timeoutMs)
+    ),
+  ]);
+}
 
 export const authService = {
   login: async (employeeId: string, pin: string) => {
@@ -115,6 +124,28 @@ export const containerService = {
     try {
       console.log("📦 Buscando contenedor por codigo:", containerCode);
 
+      // 1. Primero intentamos buscar en caché local (rápido y funciona sin internet)
+      const { catalogService } = require("./catalogService");
+      const cachedContainer = await catalogService.findContainerByCode(containerCode);
+
+      if (cachedContainer) {
+        console.log("💾 Contenedor encontrado en caché local:", cachedContainer.container_code);
+        return cachedContainer;
+      }
+
+      console.log("🌐 No encontrado en caché, buscando en servidor...");
+
+      // 2. Si no está en caché, intentamos en el servidor
+      const NetInfo = require("@react-native-community/netinfo").default;
+      const netState = await NetInfo.fetch();
+      const isOnline = netState.isConnected && netState.isInternetReachable;
+
+      if (!isOnline) {
+        throw new Error(
+          `Contenedor "${containerCode}" no encontrado en caché local. Conéctate a internet para actualizar el catálogo.`
+        );
+      }
+
       const response = await fetch(
         `${API_URL}/containers/code/${containerCode}`,
         {
@@ -133,7 +164,7 @@ export const containerService = {
       }
 
       const data = await response.json();
-      console.log("Contenedor encontrado:", data);
+      console.log("✅ Contenedor encontrado en servidor:", data);
       return data;
     } catch (error: any) {
       console.error("Error al buscar contenedor:", error.message);
@@ -161,13 +192,30 @@ export const recordService = {
     try {
       console.log("Creando reporte de recolección...", recordData);
 
-      // Detectar si hay internet
-      const NetInfo = require("@react-native-community/netinfo").default;
-      const netState = await NetInfo.fetch();
-      const isOnline = netState.isConnected && netState.isInternetReachable;
+      // Helper para hacer fetch con timeout
+      const fetchWithTimeout = (url: string, options: any, timeoutMs: number) => {
+        return Promise.race([
+          fetch(url, options),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Request timeout")), timeoutMs)
+          ),
+        ]);
+      };
 
-      if (!isOnline) {
-        console.log("Sin conexión, guardando en cola offline");
+      // Intentar enviar directamente al backend con timeout de 4 segundos
+      let response;
+      try {
+        response = await fetchWithTimeout(
+          `${API_URL}/records`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(recordData),
+          },
+          4000
+        );
+      } catch (networkError: any) {
+        console.log(`📴 Sin conexión al servidor: ${networkError.message} — guardando en cola`);
         const { offlineQueue } = require("./offlineQueue");
         const queued = await offlineQueue.add({
           type: "record",
@@ -179,18 +227,9 @@ export const recordService = {
           ...recordData,
           id: queued.id,
           created_at: queued.createdAt,
-          _offline: true, // Marca para que la UI sepa que está pendiente
+          _offline: true,
         };
       }
-
-      // Con internet: intenta enviar directamente
-      const response = await fetch(`${API_URL}/records`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(recordData),
-      });
 
       if (!response.ok) {
         // Si falla el servidor por red, guardar en cola
@@ -306,19 +345,26 @@ export const incidentService = {
     try {
       console.log("Creando incidencia...", incidentData);
 
-      // Detectar si hay internet
-      const NetInfo = require("@react-native-community/netinfo").default;
-      const netState = await NetInfo.fetch();
-      const isOnline = netState.isConnected && netState.isInternetReachable;
-
-      if (!isOnline) {
-        console.log("Sin conexión, guardando incidencia en cola offline");
+      // Intentar enviar directamente al backend con timeout
+      let response;
+      try {
+        response = await fetchWithTimeout(
+          `${API_URL}/incidents`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(incidentData),
+          },
+          4000
+        );
+      } catch (networkError: any) {
+        // Error de red o timeout → guardar en cola offline
+        console.log(`📴 Sin conexión al servidor: ${networkError.message} — guardando incidencia en cola`);
         const { offlineQueue } = require("./offlineQueue");
         const queued = await offlineQueue.add({
           type: "incident",
           endpoint: "/incidents",
           payload: incidentData,
-          photoUri: incidentData.photo_url, // Si es URI local, la subimos después
         });
         console.log(`📌 Guardado en cola con ID: ${queued.id}`);
         return {
@@ -329,24 +375,15 @@ export const incidentService = {
         };
       }
 
-      // Con internet: intenta enviar directamente
-      const response = await fetch(`${API_URL}/incidents`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(incidentData),
-      });
-
       if (!response.ok) {
-        if (response.status >= 500 || response.status === 0) {
-          console.log("Error de servidor, guardando incidencia en cola");
+        // Si el backend falla, guardar en cola
+        if (response.status >= 500) {
+          console.log("⚠️ Error de servidor, guardando incidencia en cola");
           const { offlineQueue } = require("./offlineQueue");
           const queued = await offlineQueue.add({
             type: "incident",
             endpoint: "/incidents",
             payload: incidentData,
-            photoUri: incidentData.photo_url,
           });
           console.log(`📌 Guardado en cola con ID: ${queued.id}`);
           return {
@@ -361,27 +398,9 @@ export const incidentService = {
       }
 
       const data = await response.json();
-      console.log("Incidencia creada:", data);
+      console.log("✅ Incidencia creada:", data);
       return data;
     } catch (error: any) {
-      if (error.message?.includes("Network") || error.message?.includes("fetch")) {
-        console.log("Error de red, guardando incidencia en cola");
-        const { offlineQueue } = require("./offlineQueue");
-        const queued = await offlineQueue.add({
-          type: "incident",
-          endpoint: "/incidents",
-          payload: incidentData,
-          photoUri: incidentData.photo_url,
-        });
-        console.log(`📌 Guardado en cola con ID: ${queued.id}`);
-        return {
-          ...incidentData,
-          id: queued.id,
-          created_at: queued.createdAt,
-          _offline: true,
-        };
-      }
-
       console.error("Error al crear incidencia:", error.message);
       throw error;
     }

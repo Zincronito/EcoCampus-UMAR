@@ -21,7 +21,9 @@ interface SuccessData {
   container_code: string;
   category_name: string;
   weight: number;
+  weight_recorded: boolean;
   has_incident: boolean;
+  photo_url?: string | null;
   timestamp: string;
 }
 
@@ -39,6 +41,7 @@ export default function App() {
 
   //iniciar auto-sync de la cola offline cuando la app se arranca
   useEffect(() => {
+    
     const unsubscribe = syncService.startAutoSync();
     return () => unsubscribe();
   }, []);
