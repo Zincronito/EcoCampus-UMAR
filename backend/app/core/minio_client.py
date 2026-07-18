@@ -59,8 +59,10 @@ async def upload_incident_photo(file_data: bytes, filename: str) -> str:
             content_type="image/jpeg"
         )
         
-        # Usar IP en lugar de "minio" para que el navegador pueda acceder
-        url = f"http://192.168.1.74:9000/{MINIO_BUCKET_INCIDENTS}/{filename}"
+        # Usar el endpoint público configurado por variable de entorno
+        # En local: 192.168.1.74:9000, en producción: 134.209.221.51:9000
+        public_endpoint = os.getenv("MINIO_PUBLIC_ENDPOINT", MINIO_ENDPOINT)
+        url = f"http://{public_endpoint}/{MINIO_BUCKET_INCIDENTS}/{filename}"
         return url
         
     except S3Error as e:
