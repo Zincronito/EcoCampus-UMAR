@@ -247,6 +247,7 @@ async def get_collection_records(db: AsyncSession = Depends(get_db)):
 @router.get("/collector/{collector_id}")
 async def get_collector_records(
     collector_id: uuid.UUID,
+    limit_days: int | None = None,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -266,20 +267,28 @@ async def get_collector_records(
         from sqlalchemy.orm import selectinload
         from app.models.container import Container
         from app.models.location import Location
-        
-        result = await db.execute(
-            select(CollectionRecord)
-            .where(CollectionRecord.collector_id == collector_id)
-            .options(
-                selectinload(CollectionRecord.container)
-                .selectinload(Container.waste_category),
-                selectinload(CollectionRecord.container)
-                .selectinload(Container.location)
-                .selectinload(Location.campus),
-                selectinload(CollectionRecord.incident),
-            )
-            .order_by(CollectionRecord.created_at.desc())
+        from datetime import timedelta, timezone
+
+        query = select(CollectionRecord).where(
+            CollectionRecord.collector_id == collector_id
         )
+
+        # Filtro opcional por días recientes
+        if limit_days is not None and limit_days > 0:
+            MEXICO_OFFSET = timezone(timedelta(hours=-6))
+            cutoff_date = datetime.now(MEXICO_OFFSET) - timedelta(days=limit_days)
+            query = query.where(CollectionRecord.created_at >= cutoff_date)
+
+        query = query.options(
+            selectinload(CollectionRecord.container)
+            .selectinload(Container.waste_category),
+            selectinload(CollectionRecord.container)
+            .selectinload(Container.location)
+            .selectinload(Location.campus),
+            selectinload(CollectionRecord.incident),
+        ).order_by(CollectionRecord.created_at.desc())
+
+        result = await db.execute(query)
         records = result.scalars().all()
         
         # Armar la respuesta con info enriquecida

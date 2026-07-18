@@ -14,6 +14,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { recordService } from "../services/authService";
 import RecordDetailModal from "./RecordDetailModal";
+import { BackHandler } from "react-native";
 import {
   ArrowLeft,
   Search,
@@ -23,6 +24,7 @@ import {
   ScanLine,
   RotateCcw,
 } from "lucide-react-native";
+import NetworkStatusBadge from "../components/NetworkStatusBadge";
 
 interface RecordItem {
   id: string;
@@ -75,6 +77,13 @@ export default function HistoryScreen({ onSwitchToScan, onLogout }: any) {
 
     return () => unsubscribe();
   }, []);
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", () => {
+      onSwitchToScan();
+      return true; // Previene el comportamiento por defecto
+    });
+    return () => backHandler.remove();
+  }, [onSwitchToScan]);
 
   const loadRecords = async () => {
     try {
@@ -155,21 +164,11 @@ export default function HistoryScreen({ onSwitchToScan, onLogout }: any) {
     <View style={styles.container}>
       {/* Header Limpio */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onLogout} style={styles.headerLeft} activeOpacity={0.7}>
+        <TouchableOpacity onPress={onSwitchToScan} style={styles.headerLeft} activeOpacity={0.7}>
           <ArrowLeft size={24} color="#1e293b" strokeWidth={2.5} style={{ marginRight: 8 }} />
           <Text style={styles.headerTitle}>EcoCampus</Text>
         </TouchableOpacity>
-        <View style={styles.statusBadge}>
-          <View
-            style={[
-              styles.statusDot,
-              { backgroundColor: isOnline ? "#10b981" : "#ef4444" },
-            ]}
-          />
-          <Text style={styles.statusText}>
-            {isOnline ? "EN LÍNEA" : "SIN CONEXIÓN"}
-          </Text>
-        </View>
+        <NetworkStatusBadge />
       </View>
 
       <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>

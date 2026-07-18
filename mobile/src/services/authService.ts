@@ -3,6 +3,15 @@ import { API_URL } from "../config";
 // ────────────────────────────────────────────────────────────
 // AUTENTICACIÓN
 // ────────────────────────────────────────────────────────────
+// Helper para hacer fetch con timeout (útil para detectar offline real)
+async function fetchWithTimeout(url: string, options: any, timeoutMs: number = 4000): Promise<Response> {
+  return Promise.race([
+    fetch(url, options),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Request timeout")), timeoutMs)
+    ),
+  ]);
+}
 
 export const authService = {
   login: async (employeeId: string, pin: string) => {
@@ -112,34 +121,56 @@ export const containerService = {
     }
   },
   getByCode: async (containerCode: string) => {
-  try {
-    console.log("📦 Buscando contenedor por codigo:", containerCode);
+    try {
+      console.log("📦 Buscando contenedor por codigo:", containerCode);
 
-    const response = await fetch(
-      `${API_URL}/containers/code/${containerCode}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+      // 1. Primero intentamos buscar en caché local (rápido y funciona sin internet)
+      const { catalogService } = require("./catalogService");
+      const cachedContainer = await catalogService.findContainerByCode(containerCode);
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error(`Contenedor "${containerCode}" no encontrado`);
+      if (cachedContainer) {
+        console.log("💾 Contenedor encontrado en caché local:", cachedContainer.container_code);
+        return cachedContainer;
       }
-      throw new Error("Error al buscar contenedor");
+
+      console.log("🌐 No encontrado en caché, buscando en servidor...");
+
+      // 2. Si no está en caché, intentamos en el servidor
+      const NetInfo = require("@react-native-community/netinfo").default;
+      const netState = await NetInfo.fetch();
+      const isOnline = netState.isConnected && netState.isInternetReachable;
+
+      if (!isOnline) {
+        throw new Error(
+          `Contenedor "${containerCode}" no encontrado en caché local. Conéctate a internet para actualizar el catálogo.`
+        );
+      }
+
+      const response = await fetch(
+        `${API_URL}/containers/code/${containerCode}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error(`Contenedor "${containerCode}" no encontrado`);
+        }
+        throw new Error("Error al buscar contenedor");
+      }
+
+      const data = await response.json();
+      console.log("✅ Contenedor encontrado en servidor:", data);
+      return data;
+    } catch (error: any) {
+      console.error("Error al buscar contenedor:", error.message);
+      throw error;
     }
-
-    const data = await response.json();
-    console.log("Contenedor encontrado:", data);
-    return data;
-  } catch (error: any) {
-    console.error("Error al buscar contenedor:", error.message);
-    throw error;
-  }
-},
+  },
 };
 
 // ────────────────────────────────────────────────────────────
@@ -161,23 +192,89 @@ export const recordService = {
     try {
       console.log("Creando reporte de recolección...", recordData);
 
-      const response = await fetch(`${API_URL}/records`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(recordData),
-      });
+      // Helper para hacer fetch con timeout
+      const fetchWithTimeout = (url: string, options: any, timeoutMs: number) => {
+        return Promise.race([
+          fetch(url, options),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Request timeout")), timeoutMs)
+          ),
+        ]);
+      };
+
+      // Intentar enviar directamente al backend con timeout de 4 segundos
+      let response;
+      try {
+        response = await fetchWithTimeout(
+          `${API_URL}/records`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(recordData),
+          },
+          4000
+        );
+      } catch (networkError: any) {
+        console.log(`📴 Sin conexión al servidor: ${networkError.message} — guardando en cola`);
+        const { offlineQueue } = require("./offlineQueue");
+        const queued = await offlineQueue.add({
+          type: "record",
+          endpoint: "/records",
+          payload: { ...recordData, synced_from_offline: true },
+        });
+        console.log(`📌 Guardado en cola con ID: ${queued.id}`);
+        return {
+          ...recordData,
+          id: queued.id,
+          created_at: queued.createdAt,
+          _offline: true,
+        };
+      }
 
       if (!response.ok) {
+        // Si falla el servidor por red, guardar en cola
+        if (response.status >= 500 || response.status === 0) {
+          console.log("Error de servidor, guardando en cola offline");
+          const { offlineQueue } = require("./offlineQueue");
+          const queued = await offlineQueue.add({
+            type: "record",
+            endpoint: "/records",
+            payload: { ...recordData, synced_from_offline: true },
+          });
+          console.log(`📌 Guardado en cola con ID: ${queued.id}`);
+          return {
+            ...recordData,
+            id: queued.id,
+            created_at: queued.createdAt,
+            _offline: true,
+          };
+        }
         const error = await response.json();
         throw new Error(error.detail || "Error al crear reporte");
       }
 
       const data = await response.json();
-      console.log("eporte creado:", data);
+      console.log("Reporte creado:", data);
       return data;
     } catch (error: any) {
+      // Si es error de red (fetch fail), guardar en cola
+      if (error.message?.includes("Network") || error.message?.includes("fetch")) {
+        console.log("Error de red, guardando en cola offline");
+        const { offlineQueue } = require("./offlineQueue");
+        const queued = await offlineQueue.add({
+          type: "record",
+          endpoint: "/records",
+          payload: { ...recordData, synced_from_offline: true },
+        });
+        console.log(`📌 Guardado en cola con ID: ${queued.id}`);
+        return {
+          ...recordData,
+          id: queued.id,
+          created_at: queued.createdAt,
+          _offline: true,
+        };
+      }
+
       console.error("Error al crear reporte:", error.message);
       throw error;
     }
@@ -211,7 +308,8 @@ export const recordService = {
     try {
       console.log("Obteniendo reportes del recolector...");
 
-      const response = await fetch(`${API_URL}/records/collector/${collectorId}`, {
+      // Solo últimos 7 días para no cargar demasiado
+      const response = await fetch(`${API_URL}/records/collector/${collectorId}?limit_days=7`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -246,26 +344,65 @@ export const incidentService = {
     collection_record_id?: string;
   }) => {
     try {
-      console.log("Reportando incidente...", incidentData);
+      console.log("Creando incidencia...", incidentData);
 
-      const response = await fetch(`${API_URL}/incidents`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(incidentData),
-      });
+      // Intentar enviar directamente al backend con timeout
+      let response;
+      try {
+        response = await fetchWithTimeout(
+          `${API_URL}/incidents`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(incidentData),
+          },
+          4000
+        );
+      } catch (networkError: any) {
+        // Error de red o timeout → guardar en cola offline
+        console.log(`📴 Sin conexión al servidor: ${networkError.message} — guardando incidencia en cola`);
+        const { offlineQueue } = require("./offlineQueue");
+        const queued = await offlineQueue.add({
+          type: "incident",
+          endpoint: "/incidents",
+          payload: incidentData,
+        });
+        console.log(`📌 Guardado en cola con ID: ${queued.id}`);
+        return {
+          ...incidentData,
+          id: queued.id,
+          created_at: queued.createdAt,
+          _offline: true,
+        };
+      }
 
       if (!response.ok) {
+        // Si el backend falla, guardar en cola
+        if (response.status >= 500) {
+          console.log("⚠️ Error de servidor, guardando incidencia en cola");
+          const { offlineQueue } = require("./offlineQueue");
+          const queued = await offlineQueue.add({
+            type: "incident",
+            endpoint: "/incidents",
+            payload: incidentData,
+          });
+          console.log(`📌 Guardado en cola con ID: ${queued.id}`);
+          return {
+            ...incidentData,
+            id: queued.id,
+            created_at: queued.createdAt,
+            _offline: true,
+          };
+        }
         const error = await response.json();
-        throw new Error(error.detail || "Error al reportar incidente");
+        throw new Error(error.detail || "Error al crear incidencia");
       }
 
       const data = await response.json();
-      console.log("Incidente reportado:", data);
+      console.log("✅ Incidencia creada:", data);
       return data;
     } catch (error: any) {
-      console.error("Error al reportar incidente:", error.message);
+      console.error("Error al crear incidencia:", error.message);
       throw error;
     }
   },
@@ -365,7 +502,7 @@ export const fileService = {
 
       const data = await uploadResponse.json();
       console.log("Foto subida:", data.photo_url);
-      
+
       return data.photo_url; // URL pública de MinIO
 
     } catch (error: any) {
