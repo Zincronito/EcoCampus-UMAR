@@ -308,7 +308,8 @@ export const recordService = {
     try {
       console.log("Obteniendo reportes del recolector...");
 
-      const response = await fetch(`${API_URL}/records/collector/${collectorId}`, {
+      // Solo últimos 7 días para no cargar demasiado
+      const response = await fetch(`${API_URL}/records/collector/${collectorId}?limit_days=7`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

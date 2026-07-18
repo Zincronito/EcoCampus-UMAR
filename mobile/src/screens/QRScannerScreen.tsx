@@ -20,6 +20,7 @@ import {
   ScanLine,
   RotateCcw,
   Camera,
+  LogOut,
 } from "lucide-react-native";
 import NetworkStatusBadge from "../components/NetworkStatusBadge";
 import { RefreshCw } from "lucide-react-native";
@@ -61,6 +62,20 @@ export default function QRScannerScreen({
 
     setScanned(true);
     await searchContainer(data);
+  };
+  const handleLogout = () => {
+    Alert.alert(
+      "Cerrar sesión",
+      "¿Estás seguro de que quieres cerrar sesión? Los datos pendientes de sincronización no se perderán.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Cerrar sesión",
+          style: "destructive",
+          onPress: onLogout,
+        },
+      ]
+    );
   };
   const handleRefreshCatalog = async () => {
     try {
@@ -177,8 +192,8 @@ export default function QRScannerScreen({
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onLogout} style={styles.backButton}>
-            <ArrowLeft size={24} color="#1e293b" strokeWidth={2.5} />
+          <TouchableOpacity onPress={handleLogout} style={styles.backButton}>
+            <LogOut size={22} color="#ef4444" strokeWidth={2.5} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>SISTEMA DE ESCANEO</Text>
           <View style={styles.statusBadge}>
@@ -210,8 +225,8 @@ export default function QRScannerScreen({
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onLogout} style={styles.backButton}>
-          <ArrowLeft size={24} color="#1e293b" strokeWidth={2.5} />
+        <TouchableOpacity onPress={handleLogout} style={styles.backButton}>
+          <LogOut size={22} color="#ef4444" strokeWidth={2.5} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>SISTEMA DE ESCANEO</Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
