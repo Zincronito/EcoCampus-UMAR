@@ -54,3 +54,4 @@ htmlcov/
 # ────────────────────────────────────────────────────────────
 *.log
 npm-debug.log*
+docker-compose.yml
