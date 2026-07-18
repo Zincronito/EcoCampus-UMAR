@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   Check,
 } from "lucide-react-native";
+import NetworkStatusBadge from "../components/NetworkStatusBadge";
 
 interface Container {
   id: string;
@@ -273,17 +274,7 @@ export default function CollectionScreen({
           <ArrowLeft size={24} color="#1e293b" strokeWidth={2.5} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>EcoCampus</Text>
-        <View style={styles.statusBadge}>
-          <View
-            style={[
-              styles.statusDot,
-              { backgroundColor: isOnline ? "#10b981" : "#ef4444" },
-            ]}
-          />
-          <Text style={styles.statusText}>
-            {isOnline ? "EN LÍNEA" : "SIN CONEXIÓN"}
-          </Text>
-        </View>
+        <NetworkStatusBadge />
       </View>
 
       <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>

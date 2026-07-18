@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 // Nota: Ajusté la ruta del import asumiendo que containerService tiene su propio archivo
-import { containerService } from "../services/authService"; 
+import { containerService } from "../services/authService";
 import {
   ArrowLeft,
   Edit3,
@@ -21,7 +21,9 @@ import {
   RotateCcw,
   Camera,
 } from "lucide-react-native";
-
+import NetworkStatusBadge from "../components/NetworkStatusBadge";
+import { RefreshCw } from "lucide-react-native";
+import { catalogService } from "../services/catalogService";
 // Interfaces de tipado de datos estrictas para la entrada
 export interface ContainerData {
   id: string;
@@ -46,6 +48,7 @@ export default function QRScannerScreen({
   const [searching, setSearching] = useState(false);
   const [manualInputVisible, setManualInputVisible] = useState(false);
   const [manualCode, setManualCode] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (!permission?.granted) {
@@ -58,6 +61,21 @@ export default function QRScannerScreen({
 
     setScanned(true);
     await searchContainer(data);
+  };
+  const handleRefreshCatalog = async () => {
+    try {
+      setRefreshing(true);
+      const result = await catalogService.downloadAll();
+      if (result.success) {
+        Alert.alert("Catálogo actualizado", "Los contenedores se han actualizado correctamente.");
+      } else {
+        Alert.alert("Sin conexión", "No se pudo actualizar el catálogo. Verifica tu conexión.");
+      }
+    } catch (error: any) {
+      Alert.alert("Error", "No se pudo actualizar: " + error.message);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const searchContainer = async (code: string) => {
@@ -112,7 +130,7 @@ export default function QRScannerScreen({
       animationType="fade"
       onRequestClose={() => setManualInputVisible(false)}
     >
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.modalOverlay}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
@@ -196,8 +214,15 @@ export default function QRScannerScreen({
           <ArrowLeft size={24} color="#1e293b" strokeWidth={2.5} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>SISTEMA DE ESCANEO</Text>
-        <View style={styles.statusBadge}>
-          <Text style={styles.statusText}>EN LÍNEA</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <TouchableOpacity onPress={handleRefreshCatalog} disabled={refreshing}>
+            <RefreshCw
+              size={20}
+              color={refreshing ? "#94a3b8" : "#3b82f6"}
+              strokeWidth={2.5}
+            />
+          </TouchableOpacity>
+          <NetworkStatusBadge />
         </View>
       </View>
 
