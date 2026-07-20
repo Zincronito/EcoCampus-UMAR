@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Filter,
   X,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -154,6 +155,139 @@ export default function AnalyticsPage() {
     }
   };
 
+  const exportAnalyticsToCSV = () => {
+    if (!analytics || analytics.summary?.total_records === 0) {
+      toast.error("No hay datos para exportar");
+      return;
+    }
+
+    const rows: string[][] = [];
+
+    // Encabezado
+    rows.push(["Sección", "Métrica", "Valor"]);
+
+    // ─── RESUMEN (KPIs) ───
+    rows.push(["Resumen", "Peso total (kg)", analytics.summary.total_weight.toFixed(2)]);
+    rows.push(["Resumen", "Total de registros", String(analytics.summary.total_records)]);
+    rows.push(["Resumen", "Tasa de generación promedio (kg/día)", analytics.summary.average_generation_rate.toFixed(2)]);
+    rows.push(["Resumen", "Tasa de generación semanal (kg)", analytics.summary.weekly_generation_rate.toFixed(2)]);
+    rows.push(["Resumen", "Porcentaje de separación correcta (%)", analytics.summary.correct_separation_percentage.toFixed(2)]);
+    rows.push(["Resumen", "Nivel de separación promedio", String(analytics.summary.average_separation_level)]);
+
+    // ─── SEPARACIÓN POR NIVEL ───
+    if (analytics.separation?.by_level) {
+      Object.entries(analytics.separation.by_level).forEach(
+        ([level, data]: [string, any]) => {
+          rows.push([
+            "Separación por nivel",
+            `Nivel ${level} - ${data.name}`,
+            String(data.count),
+          ]);
+        }
+      );
+    }
+
+    // ─── GENERACIÓN POR CATEGORÍA ───
+    if (analytics.generation?.by_category?.length > 0) {
+      analytics.generation.by_category.forEach((cat: any) => {
+        rows.push([
+          "Generación por categoría (kg)",
+          cat.name,
+          Number(cat.weight).toFixed(2),
+        ]);
+      });
+    }
+
+    // ─── GENERACIÓN POR SECTOR ───
+    if (analytics.generation?.by_sector?.length > 0) {
+      analytics.generation.by_sector.forEach((sec: any) => {
+        rows.push([
+          "Generación por sector (kg)",
+          sec.name || sec.sector,
+          Number(sec.weight).toFixed(2),
+        ]);
+      });
+    }
+
+    // ─── GENERACIÓN POR CAMPUS ───
+    if (analytics.generation?.by_campus?.length > 0) {
+      analytics.generation.by_campus.forEach((camp: any) => {
+        rows.push([
+          "Generación por campus (kg)",
+          camp.name || camp.campus,
+          Number(camp.weight).toFixed(2),
+        ]);
+      });
+    }
+
+    // ─── GENERACIÓN POR NIVEL DE LLENADO Y SECTOR ───
+    if (analytics.generation?.by_fill_level_sector?.length > 0) {
+      analytics.generation.by_fill_level_sector.forEach((item: any) => {
+        rows.push([
+          "Generación por nivel y sector",
+          `${item.sector || item.name} - ${item.fill_level || ""}`,
+          String(item.count ?? item.weight ?? 0),
+        ]);
+      });
+    }
+
+    // ─── EVOLUCIÓN TEMPORAL DE GENERACIÓN ───
+    if (analytics.generation?.temporal?.length > 0) {
+      rows.push(["", "", ""]); // Fila vacía separadora
+      rows.push(["Fecha", "Peso generado (kg)", ""]);
+      analytics.generation.temporal.forEach((point: any) => {
+        rows.push([
+          point.date || point.name,
+          Number(point.weight ?? 0).toFixed(2),
+          "",
+        ]);
+      });
+    }
+
+    // ─── FILTROS APLICADOS ───
+    rows.push(["", "", ""]);
+    rows.push(["Filtros aplicados", "", ""]);
+    if (dateFrom) rows.push(["Filtros aplicados", "Fecha desde", dateFrom]);
+    if (dateTo) rows.push(["Filtros aplicados", "Fecha hasta", dateTo]);
+    if (campusFilter !== "all") {
+      const campusName = campuses.find((c) => c.id === campusFilter)?.name || campusFilter;
+      rows.push(["Filtros aplicados", "Campus", campusName]);
+    }
+    if (categoryFilter !== "all") {
+      const catName = categories.find((c) => c.id === categoryFilter)?.name || categoryFilter;
+      rows.push(["Filtros aplicados", "Categoría", catName]);
+    }
+    if (sectorFilter !== "all") {
+      rows.push(["Filtros aplicados", "Sector", sectorFilter]);
+    }
+
+    // Escape de celdas
+    const escapeCell = (value: any): string => {
+      const str = String(value ?? "");
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    // Construir CSV
+    const csvContent = rows.map((row) => row.map(escapeCell).join(",")).join("\n");
+
+    // BOM para acentos en Excel
+    const bom = "\uFEFF";
+    const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const timestamp = new Date().toISOString().split("T")[0];
+    link.href = url;
+    link.download = `analytics_ecocampus_${timestamp}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast.success("Analíticas exportadas correctamente");
+  };
+
   const handleClearFilters = async () => {
     setDateFrom("");
     setDateTo("");
@@ -186,6 +320,7 @@ export default function AnalyticsPage() {
       </div>
     );
   }
+
   // Estado vacío: sin registros
   if (!loading && analytics && analytics.summary?.total_records === 0) {
     return (
@@ -212,7 +347,7 @@ export default function AnalyticsPage() {
               Aún no hay datos para mostrar
             </h3>
             <p className="text-gray-600 mb-6">
-              Las métricas y gráficas aparecerán aquí una vez que los recolectores 
+              Las métricas y gráficas aparecerán aquí una vez que los recolectores
               registren recolecciones desde la aplicación móvil.
             </p>
             <div className="text-sm text-gray-500 bg-gray-50 rounded-lg p-4 w-full">
@@ -252,6 +387,14 @@ export default function AnalyticsPage() {
             KPIs y visualización de tendencias en la recolección de residuos.
           </p>
         </div>
+        <Button
+          onClick={exportAnalyticsToCSV}
+          variant="outline"
+          className="gap-2"
+        >
+          <Download className="w-4 h-4" />
+          Exportar CSV
+        </Button>
       </div>
 
       {/* Filtros */}
@@ -385,7 +528,7 @@ export default function AnalyticsPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 mb-2">
-                      Tasa Promedio
+                      Tasa Promedio Diaria
                     </p>
                     <div className="flex items-baseline gap-2">
                       <p className="text-3xl font-bold text-gray-900">
@@ -406,7 +549,7 @@ export default function AnalyticsPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 mb-2">
-                      Tasa Semanal
+                      Tasa Semanal Estimada
                     </p>
                     <div className="flex items-baseline gap-2">
                       <p className="text-3xl font-bold text-gray-900">
@@ -448,14 +591,14 @@ export default function AnalyticsPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 mb-2">
-                      Separación Correcta
+                      Efectividad de Separación
                     </p>
                     <div className="flex items-baseline gap-2">
                       <p className="text-3xl font-bold text-gray-900">
                         {analytics.summary.correct_separation_percentage.toFixed(1)}
                       </p>
                     </div>
-                    <p className="text-sm font-medium text-gray-500 mt-2">%</p>
+                    <p className="text-sm font-medium text-gray-500 mt-2">% correctos</p>
                   </div>
                   <div className="p-3 bg-amber-100 rounded-lg">
                     <AlertCircle className="w-6 h-6 text-amber-600" />
@@ -471,6 +614,7 @@ export default function AnalyticsPage() {
 
           {/* Gráficas */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
+            
             {/* Gráfica 1: Tendencia */}
             <Card className="shadow-sm">
               <CardHeader className="pb-2">
@@ -480,20 +624,21 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={320}>
-                  <LineChart data={analytics.generation.temporal} margin={{ left: 10, right: 30, top: 20, bottom: 30 }}>
+                  <LineChart data={analytics.generation.temporal} margin={{ left: 20, right: 30, top: 20, bottom: 25 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                     <XAxis
                       dataKey="date"
-                      tick={{ fill: '#6b7280' }}
+                      tick={{ fill: '#6b7280', fontSize: 12 }}
                       tickLine={false}
                       axisLine={false}
-                      label={{ value: "Fecha", position: "insideBottom", offset: -20, fill: '#6b7280' }}
+                      tickMargin={10}
+                      label={{ value: "Fecha", position: "insideBottom", offset: -15, fill: '#6b7280', fontSize: 12 }}
                     />
                     <YAxis
-                      label={{ value: "Generación Diaria (kg)", angle: -90, position: "insideLeft", offset: 10, style: { textAnchor: 'middle', fill: '#6b7280' } }}
-                      tick={{ fill: '#6b7280' }}
+                      tick={{ fill: '#6b7280', fontSize: 12 }}
                       tickLine={false}
                       axisLine={false}
+                      label={{ value: "Generación (kg)", angle: -90, position: "insideLeft", offset: -5, style: { textAnchor: 'middle', fill: '#6b7280', fontSize: 12 } }}
                     />
                     <Tooltip
                       formatter={(value: any) => [`${value} kg`, 'Peso']}
@@ -554,6 +699,7 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
+            {/* Gráfica 3: Generación por Sector */}
             <Card className="shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg font-semibold text-gray-800">
@@ -565,23 +711,24 @@ export default function AnalyticsPage() {
                   <BarChart
                     data={analytics.generation.by_sector}
                     layout="vertical"
-                    margin={{ left: 20, right: 60, top: 20, bottom: 30 }}
+                    margin={{ left: 20, right: 50, top: 20, bottom: 25 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
                     <XAxis
                       type="number"
-                      label={{ value: "(kg)", position: "insideBottom", offset: -20, fill: '#6b7280' }}
-                      tick={{ fill: '#6b7280' }}
+                      tick={{ fill: '#6b7280', fontSize: 12 }}
                       axisLine={false}
                       tickLine={false}
+                      label={{ value: "Peso Generado (kg)", position: "insideBottom", offset: -15, fill: '#6b7280', fontSize: 12 }}
                     />
                     <YAxis
                       dataKey="sector"
                       type="category"
                       width={100}
-                      tick={{ fill: '#4b5563', fontWeight: 500 }}
+                      tick={{ fill: '#4b5563', fontWeight: 500, fontSize: 12 }}
                       axisLine={false}
                       tickLine={false}
+                      label={{ value: "Sector", angle: -90, position: "insideLeft", offset: -5, style: { textAnchor: 'middle', fill: '#6b7280', fontSize: 12 } }}
                     />
                     <Tooltip
                       formatter={(value: any) => [`${value} kg`, 'Peso']}
@@ -596,17 +743,18 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+            {/* Gráfica 4: Generación por Campus */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-semibold text-gray-800">
                   Generación por Campus
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={320}>
                   <BarChart
                     data={analytics.generation.by_campus}
-                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    margin={{ top: 20, right: 20, left: 20, bottom: 25 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                     <XAxis
@@ -615,12 +763,13 @@ export default function AnalyticsPage() {
                       tickLine={false}
                       tick={{ fontSize: 12, fill: '#6b7280' }}
                       tickMargin={10}
+                      label={{ value: "Sede / Campus", position: "insideBottom", offset: -15, fill: '#6b7280', fontSize: 12 }}
                     />
                     <YAxis
                       axisLine={false}
                       tickLine={false}
                       tick={{ fontSize: 12, fill: '#6b7280' }}
-                      tickFormatter={(value) => `${value} kg`}
+                      label={{ value: "Peso Acumulado (kg)", angle: -90, position: "insideLeft", offset: -5, style: { textAnchor: 'middle', fill: '#6b7280', fontSize: 12 } }}
                     />
                     <Tooltip
                       cursor={{ fill: '#f3f4f6' }}
@@ -634,7 +783,7 @@ export default function AnalyticsPage() {
                     <Bar
                       dataKey="weight"
                       name="Peso"
-                      fill="#16a34a"
+                      fill="#8b5cf6" 
                       radius={[4, 4, 0, 0]}
                       barSize={45}
                     />
@@ -643,17 +792,18 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-                  Nivel de Llenado por Sector
+            {/* Gráfica 5: Nivel de Llenado por Sector */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-semibold text-gray-800">
+                  Nivel de Llenado Promedio por Sector
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={320}>
                   <BarChart
                     data={analytics.generation.by_fill_level_sector}
-                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    margin={{ top: 20, right: 20, left: 20, bottom: 25 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                     <XAxis
@@ -662,6 +812,7 @@ export default function AnalyticsPage() {
                       tickLine={false}
                       tick={{ fontSize: 12, fill: '#6b7280' }}
                       tickMargin={10}
+                      label={{ value: "Sector", position: "insideBottom", offset: -15, fill: '#6b7280', fontSize: 12 }}
                     />
                     <YAxis
                       domain={[0, 5]}
@@ -669,6 +820,7 @@ export default function AnalyticsPage() {
                       axisLine={false}
                       tickLine={false}
                       tick={{ fontSize: 12, fill: '#6b7280' }}
+                      label={{ value: "Nivel (0 - 5)", angle: -90, position: "insideLeft", offset: -5, style: { textAnchor: 'middle', fill: '#6b7280', fontSize: 12 } }}
                     />
                     <Tooltip
                       cursor={{ fill: '#f3f4f6' }}
@@ -691,15 +843,15 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+            {/* Gráfica 6: Incidencias Operativas */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-semibold text-gray-800">
                   Incidencias Operativas
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={320}>
                   <BarChart
                     data={[
                       { name: "Destapado", count: analytics.incidents.uncovered },
@@ -707,7 +859,7 @@ export default function AnalyticsPage() {
                       { name: "Mal olor", count: analytics.incidents.odor },
                       { name: "Desbordamiento", count: analytics.incidents.overflow },
                     ]}
-                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    margin={{ top: 20, right: 20, left: 20, bottom: 25 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                     <XAxis
@@ -716,12 +868,14 @@ export default function AnalyticsPage() {
                       tickLine={false}
                       tick={{ fontSize: 12, fill: '#6b7280' }}
                       tickMargin={10}
+                      label={{ value: "Tipo de Incidencia", position: "insideBottom", offset: -15, fill: '#6b7280', fontSize: 12 }}
                     />
                     <YAxis
                       allowDecimals={false}
                       axisLine={false}
                       tickLine={false}
                       tick={{ fontSize: 12, fill: '#6b7280' }}
+                      label={{ value: "Cant. de Reportes", angle: -90, position: "insideLeft", offset: -5, style: { textAnchor: 'middle', fill: '#6b7280', fontSize: 12 } }}
                     />
                     <Tooltip
                       cursor={{ fill: '#f3f4f6' }}
@@ -743,8 +897,8 @@ export default function AnalyticsPage() {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-            
-            {/* Gráfica: Distribución de Separación */}
+
+            {/* Gráfica 7: Distribución de Separación */}
             <Card className="shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg font-semibold text-gray-800">
@@ -755,20 +909,22 @@ export default function AnalyticsPage() {
                 <ResponsiveContainer width="100%" height={320}>
                   <BarChart
                     data={separationChartData}
-                    margin={{ left: 10, right: 20, top: 20, bottom: 20 }}
+                    margin={{ left: 20, right: 20, top: 20, bottom: 25 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                     <XAxis
                       dataKey="level"
-                      tick={{ fill: '#4b5563', fontWeight: 500 }}
+                      tick={{ fill: '#4b5563', fontWeight: 500, fontSize: 12 }}
                       axisLine={false}
                       tickLine={false}
+                      tickMargin={10}
+                      label={{ value: "Nivel de Separación", position: "insideBottom", offset: -15, fill: '#6b7280', fontSize: 12 }}
                     />
                     <YAxis
-                      label={{ value: "Número de registros", angle: -90, position: "insideLeft", offset: 15, style: { textAnchor: 'middle', fill: '#6b7280' } }}
-                      tick={{ fill: '#6b7280' }}
+                      tick={{ fill: '#6b7280', fontSize: 12 }}
                       axisLine={false}
                       tickLine={false}
+                      label={{ value: "Total de Registros", angle: -90, position: "insideLeft", offset: -5, style: { textAnchor: 'middle', fill: '#6b7280', fontSize: 12 } }}
                     />
                     <Tooltip
                       formatter={(value: any) => [value, 'Registros']}
@@ -784,17 +940,19 @@ export default function AnalyticsPage() {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-            <Card className="col-span-full">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+            
+            {/* Gráfica 8: Evolución de Separación */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-semibold text-gray-800">
                   Evolución de Separación
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={320}>
                   <LineChart
                     data={analytics.separation.temporal}
-                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    margin={{ top: 20, right: 20, left: 20, bottom: 25 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
 
@@ -804,13 +962,14 @@ export default function AnalyticsPage() {
                       tickLine={false}
                       tick={{ fontSize: 12, fill: '#6b7280' }}
                       tickMargin={10}
+                      label={{ value: "Fecha", position: "insideBottom", offset: -15, fill: '#6b7280', fontSize: 12 }}
                     />
                     <YAxis
                       domain={[0, 100]}
                       axisLine={false}
                       tickLine={false}
                       tick={{ fontSize: 12, fill: '#6b7280' }}
-                      tickFormatter={(value) => `${value}%`}
+                      label={{ value: "Efectividad (%)", angle: -90, position: "insideLeft", offset: -5, style: { textAnchor: 'middle', fill: '#6b7280', fontSize: 12 } }}
                     />
                     <Tooltip
                       cursor={{ stroke: '#9ca3af', strokeWidth: 1, strokeDasharray: '5 5' }}
@@ -822,22 +981,23 @@ export default function AnalyticsPage() {
                       formatter={(value) => [`${value}%`, 'Separación Correcta']}
                     />
                     <Legend
-                      wrapperStyle={{ paddingTop: '20px' }}
+                      wrapperStyle={{ paddingTop: '10px' }}
                       iconType="circle"
                     />
                     <Line
                       type="monotone"
                       dataKey="correct_percentage"
                       name="Separación Correcta"
-                      stroke="#10b981"
+                      stroke="#06b6d4"
                       strokeWidth={3}
-                      dot={{ r: 4, fill: '#10b981', strokeWidth: 0 }}
-                      activeDot={{ r: 6, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
+                      dot={{ r: 4, fill: '#06b6d4', strokeWidth: 0 }}
+                      activeDot={{ r: 6, fill: '#06b6d4', stroke: '#fff', strokeWidth: 2 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
+
           </div>
         </>
       )}

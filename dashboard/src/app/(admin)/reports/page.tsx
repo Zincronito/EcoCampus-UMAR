@@ -11,6 +11,12 @@ import {
   AlertCircle,
   Download,
   Eye,
+  CalendarDays,
+  User,
+  MapPin,
+  Tag,
+  Scale,
+  PackageCheck,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -30,6 +36,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 import {
@@ -81,9 +88,34 @@ interface Report {
   };
 }
 
+// Mapa de niveles de llenado
+const FILL_LEVEL_MAP: Record<string, { label: string; color: string }> = {
+  empty: { label: "Vacío (0%)", color: "bg-slate-100 text-slate-700 border-slate-200" },
+  quarter: { label: "< 25%", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  half: { label: "50%", color: "bg-yellow-50 text-yellow-800 border-yellow-200" },
+  three_quarter: { label: "75%", color: "bg-orange-50 text-orange-800 border-orange-200" },
+  full: { label: "> 75%", color: "bg-red-50 text-red-800 border-red-200" },
+  overflow: { label: "Desbordado", color: "bg-red-600 text-white border-red-700" },
+};
+
+// COMPONENTE EXTERNO CORREGIDO (Sin truncate, dejando que el texto respire)
+const InfoBlock = ({ icon: Icon, label, value, children }: any) => (
+  <div className="flex items-start gap-3 p-3.5 bg-slate-50/80 rounded-xl border border-slate-100 h-full">
+    <div className="p-2 bg-white rounded-lg border border-slate-100 shadow-sm text-blue-600 shrink-0">
+      <Icon className="w-5 h-5" />
+    </div>
+    <div className="min-w-0 flex-1">
+      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">{label}</p>
+      {value && <p className="text-sm font-bold text-slate-950 leading-tight">{value}</p>}
+      {children}
+    </div>
+  </div>
+);
+
 export default function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchingFilters, setFetchingFilters] = useState(false);
   const [collectors, setCollectors] = useState<Collector[]>([]);
   const [campuses, setCampuses] = useState<Campus[]>([]);
   const [categories, setCategories] = useState<WasteCategory[]>([]);
@@ -98,7 +130,7 @@ export default function ReportsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [locationFilter, setLocationFilter] = useState<string>("all");
   const [incidentFilter, setIncidentFilter] = useState<string>("all");
-  const [filterWeightType, setFilterWeightType] = useState<"all" | "real" | "estimated">("all");
+  const [filterWeightType, setFilterWeightType] = useState<string>("all");
 
   // Modal
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -125,7 +157,7 @@ export default function ReportsPage() {
       setCategories(categoriesData);
       setLocations(locationsData);
     } catch (error: any) {
-      toast.error("Error al cargar los reportes");
+      toast.error("Error al cargar los datos");
       console.error(error);
     } finally {
       setLoading(false);
@@ -134,7 +166,7 @@ export default function ReportsPage() {
 
   const handleFilterApply = async () => {
     try {
-      setLoading(true);
+      setFetchingFilters(true);
       const filters: any = {};
 
       if (dateFrom) filters.date_from = dateFrom;
@@ -145,16 +177,16 @@ export default function ReportsPage() {
       if (locationFilter !== "all") filters.location_id = locationFilter;
       if (incidentFilter === "with") filters.has_incident = true;
       if (incidentFilter === "without") filters.has_incident = false;
-
+      if (filterWeightType !== "all") filters.weight_type = filterWeightType;
 
       const data = await reportsAPI.getReports(filters);
       setReports(data);
-      toast.success("Filtros aplicados");
+      toast.success("Filtros aplicados correctamente");
     } catch (error: any) {
       toast.error("Error al aplicar filtros");
       console.error(error);
     } finally {
-      setLoading(false);
+      setFetchingFilters(false);
     }
   };
 
@@ -167,29 +199,21 @@ export default function ReportsPage() {
     setCategoryFilter("all");
     setLocationFilter("all");
     setIncidentFilter("all");
+    setFilterWeightType("all");
     await loadData();
+    toast.success("Filtros restablecidos");
   };
 
-  // Filtrado en cliente (búsqueda)
   const filteredReports = reports.filter((report) => {
-    const matchesSearch =
+    return (
       report.container.container_code
         .toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
       report.collector.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (report.category?.name || "")
         .toLowerCase()
-        .includes(searchTerm.toLowerCase());
-
-    // Filtro por tipo de peso
-    let matchesWeightType = true;
-    if (filterWeightType === "real") {
-      matchesWeightType = !report.is_weight_estimated;
-    } else if (filterWeightType === "estimated") {
-      matchesWeightType = report.is_weight_estimated;
-    }
-
-    return matchesSearch && matchesWeightType;
+        .includes(searchTerm.toLowerCase())
+    );
   });
 
   const formatDate = (date: string) => {
@@ -202,338 +226,287 @@ export default function ReportsPage() {
     });
   };
 
-  const getFillLevelBadge = (level: string) => {
-  // Mapeo de strings
-  const levelMap: Record<string, string> = {
-    "empty": "0% (Vacío)",
-    "quarter": "<25%",
-    "half": "50%",
-    "three_quarter": "75%",
-    "full": ">75%",
-    "overflow": "100% (Desbordado)",
+  const exportToCSV = () => {
+    if (filteredReports.length === 0) {
+      toast.error("No hay reportes para exportar");
+      return;
+    }
+
+    const headers = [
+      "Fecha", "Hora", "Contenedor", "Categoría", "Ubicación", "Sector", "Campus",
+      "Recolector", "Peso Bruto (kg)", "Peso Neto (kg)", "Peso Estimado",
+      "Nivel de Llenado", "Estado Físico", "Condiciones", "Nivel de Separación",
+      "Tiene Incidencia", "Descripción Incidencia",
+    ];
+
+    const rows = filteredReports.map((r) => {
+      const date = new Date(r.created_at);
+      return [
+        date.toLocaleDateString("es-MX"),
+        date.toLocaleTimeString("es-MX"),
+        r.container?.container_code || "",
+        r.category?.name || "",
+        r.location?.name || "",
+        r.location?.sector || "",
+        r.location?.campus || "",
+        r.collector?.full_name || "",
+        r.gross_weight ?? "",
+        r.net_weight ?? "",
+        r.is_weight_estimated ? "Sí" : "No",
+        FILL_LEVEL_MAP[r.fill_level]?.label || r.fill_level,
+        r.physical_state,
+        r.condition,
+        r.separation_level,
+        r.incident ? "Sí" : "No",
+        r.incident?.description || "",
+      ];
+    });
+
+    const escapeCell = (value: any): string => {
+      const str = String(value ?? "");
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const csvContent = [
+      headers.map(escapeCell).join(","),
+      ...rows.map((row) => row.map(escapeCell).join(",")),
+    ].join("\n");
+
+    const bom = "\uFEFF";
+    const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const timestamp = new Date().toISOString().split("T")[0];
+    link.href = url;
+    link.download = `reportes_ecocampus_${timestamp}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast.success(`Exportados ${filteredReports.length} reportes a CSV`);
   };
-  
-  // Mapeo de números antiguos
-  const numberMap: Record<string, string> = {
-    "0": "0% (Vacío)",
-    "1": "<25%",
-    "2": "50%",
-    "3": "75%",
-    "4": ">75%",
-    "5": "100% (Desbordado)",
-  };
-  
-  // Intentar primero con string, luego con número
-  return levelMap[level] || numberMap[level] || level;
-};
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 p-6 md:p-8 min-h-screen bg-slate-50/50">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Reportes de Recolección</h1>
-          <p className="text-gray-600 mt-1">
-            Visualiza y analiza los reportes generados por los recolectores.
+          <h1 className="text-4xl font-extrabold tracking-tighter text-slate-950">
+            Reportes de Recolección
+          </h1>
+          <p className="text-slate-600 mt-1.5 text-lg max-w-2xl">
+            Historial detallado y análisis de las actividades de recolección de residuos en todos los campus.
           </p>
         </div>
-        <div className="text-right">
-          <div className="text-3xl font-bold text-blue-600">{reports.length}</div>
-          <p className="text-gray-600 text-sm">Reportes totales</p>
+        <div className="flex items-center gap-3 shrink-0">
+          <Card className="bg-white shadow-sm border-slate-100">
+            <CardContent className="py-3 px-5 flex items-center gap-3">
+                <FileText className="w-8 h-8 text-blue-500 bg-blue-50 p-1.5 rounded-lg"/>
+                <div>
+                    <div className="text-3xl font-bold text-slate-950">{reports.length}</div>
+                    <p className="text-slate-500 text-sm font-medium">Reportes Totales</p>
+                </div>
+            </CardContent>
+          </Card>
+          <Button
+            onClick={exportToCSV}
+            variant="default"
+            className="gap-2.5 h-12 px-6 bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-sm"
+            disabled={filteredReports.length === 0}
+          >
+            <Download className="w-5 h-5" />
+            Exportar CSV
+          </Button>
         </div>
       </div>
 
-      {/* Búsqueda y Filtros */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
-            Filtros
+      {/* Panel de Filtros */}
+      <Card className="border-slate-100 shadow-sm rounded-2xl bg-white">
+        <CardHeader className="border-b border-slate-100/50 pb-4">
+          <CardTitle className="flex items-center gap-3 text-xl font-semibold text-slate-950">
+            <Filter className="w-5 h-5 text-blue-600" />
+            Panel de Filtrado Avanzado
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Búsqueda */}
+        <CardContent className="pt-6 space-y-6">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
             <Input
               type="text"
-              placeholder="Buscar por contenedor, recolector o categoría..."
+              placeholder="Búsqueda rápida por código de contenedor, nombre del recolector o categoría..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-12 h-12 text-base rounded-xl border-slate-200 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
-          {/* Grid de filtros */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {/* Fecha desde */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-4">
+            {[
+              { label: "Desde", type: "date", value: dateFrom, setter: setDateFrom },
+              { label: "Hasta", type: "date", value: dateTo, setter: setDateTo },
+            ].map((f, i) => (
+              <div key={i}>
+                <label className="text-sm font-semibold text-slate-700 mb-1.5 block">{f.label}</label>
+                <div className="relative">
+                    <CalendarDays className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/>
+                    <Input type={f.type} value={f.value} onChange={(e) => f.setter(e.target.value)} className="h-11 rounded-lg pl-10 border-slate-200" />
+                </div>
+              </div>
+            ))}
+
+            {[
+                { label: "Recolector", value: collectorFilter, setter: setCollectorFilter, placeholder: "Todos", options: collectors.map(c => ({value: c.id, label: c.full_name})) },
+                { label: "Campus", value: campusFilter, setter: setCampusFilter, placeholder: "Todos", options: campuses.map(c => ({value: c.id, label: c.name})) },
+                { label: "Categoría", value: categoryFilter, setter: setCategoryFilter, placeholder: "Todas", options: categories.map(c => ({value: c.id, label: c.name})) },
+                { label: "Ubicación", value: locationFilter, setter: setLocationFilter, placeholder: "Todas", options: locations.map(l => ({value: l.id, label: `${l.name} (${l.sector})`})) },
+            ].map((f, i) => (
+                <div key={i}>
+                    <label className="text-sm font-semibold text-slate-700 mb-1.5 block">{f.label}</label>
+                    <Select value={f.value} onValueChange={f.setter}>
+                        <SelectTrigger className="h-11 rounded-lg border-slate-200 text-slate-900">
+                            <SelectValue placeholder={f.placeholder} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todos</SelectItem>
+                            {f.options.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+            ))}
+
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Desde
-              </label>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-              />
+                <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Tipo de Peso</label>
+                <Select value={filterWeightType} onValueChange={setFilterWeightType}>
+                    <SelectTrigger className="h-11 rounded-lg border-slate-200 text-slate-900">
+                        <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="real">Solo Reales</SelectItem>
+                        <SelectItem value="estimated">Solo Estimados</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
 
-            {/* Fecha hasta */}
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Hasta
-              </label>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
-            </div>
-
-            {/* Recolector */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Recolector
-              </label>
-              <Select value={collectorFilter} onValueChange={setCollectorFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {collectors.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Campus */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Campus
-              </label>
-              <Select value={campusFilter} onValueChange={setCampusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {campuses.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Categoría */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Categoría
-              </label>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Ubicación */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Ubicación
-              </label>
-              <Select value={locationFilter} onValueChange={setLocationFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {locations.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>
-                      {l.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {/* Tipo de Peso */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Tipo de Peso
-              </label>
-              <select
-                value={filterWeightType}
-                onChange={(e) => setFilterWeightType(e.target.value as "all" | "real" | "estimated")}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">Todos</option>
-                <option value="real">Solo Pesos Reales</option>
-                <option value="estimated">Solo Pesos Estimados</option>
-              </select>
-            </div>
-
-            {/* Incidencia */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Incidencia
-              </label>
-              <Select value={incidentFilter} onValueChange={setIncidentFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="with">Con incidencia</SelectItem>
-                  <SelectItem value="without">Sin incidencia</SelectItem>
-                </SelectContent>
-              </Select>
+                <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Incidencias</label>
+                <Select value={incidentFilter} onValueChange={setIncidentFilter}>
+                    <SelectTrigger className="h-11 rounded-lg border-slate-200 text-slate-900">
+                        <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="with">Con incidencia</SelectItem>
+                        <SelectItem value="without">Sin incidencia</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
           </div>
 
-          {/* Botones de acción */}
-          <div className="flex gap-2 pt-2">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+            <Button variant="outline" onClick={handleClearFilters} className="h-11 px-6 rounded-xl border-slate-200 text-slate-700 gap-2 hover:bg-slate-50">
+              <X className="w-4 h-4" />
+              Limpiar
+            </Button>
             <Button
               onClick={handleFilterApply}
-              className="bg-blue-600 hover:bg-blue-700"
+              disabled={fetchingFilters}
+              className="h-11 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-2 shadow-sm shadow-blue-100"
             >
-              <Filter className="w-4 h-4 mr-2" />
-              Aplicar filtros
-            </Button>
-            <Button variant="outline" onClick={handleClearFilters}>
-              <X className="w-4 h-4 mr-2" />
-              Limpiar
+              {fetchingFilters ? <Loader2 className="w-4 h-4 animate-spin"/> : <Filter className="w-4 h-4" />}
+              {fetchingFilters ? "Aplicando..." : "Aplicar Filtros"}
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Loading */}
-      {loading && (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-          <span className="ml-3 text-gray-600">Cargando reportes...</span>
+      {/* Tabla */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <Loader2 className="w-12 h-12 animate-spin text-blue-500 mb-4" />
+          <p className="text-xl font-semibold text-slate-900">Cargando registros...</p>
         </div>
-      )}
-
-      {/* Empty state */}
-      {!loading && filteredReports.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <FileText className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500">
-              No se encontraron reportes con los filtros actuales
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Tabla de reportes */}
-      {!loading && filteredReports.length > 0 && (
-        <Card>
+      ) : filteredReports.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <FileText className="w-16 h-16 text-slate-200 mb-5" strokeWidth={1} />
+          <p className="text-2xl font-bold text-slate-950">No se encontraron reportes</p>
+          <Button variant="outline" onClick={handleClearFilters} className="mt-8 rounded-xl gap-2">
+            <X className="w-4 h-4"/>
+            Restablecer Filtros
+          </Button>
+        </div>
+      ) : (
+        <Card className="border-slate-100 shadow-sm rounded-2xl bg-white overflow-hidden">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="border-b bg-gray-50">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50/50 border-b border-slate-100">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Contenedor
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Recolector
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Categoría
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Peso (kg)
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Llenado
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Fecha
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Incidencia
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Acciones
-                    </th>
+                    {[ "Contenedor", "Recolector", "Categoría", "Peso Neto", "Llenado", "Fecha", "Incidencia", "Acciones"].map(header => (
+                        <th key={header} className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider tabular-nums">
+                            {header}
+                        </th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y">
+                <tbody className="divide-y divide-slate-100">
                   {filteredReports.map((report) => (
-                    <tr key={report.id} className="hover:bg-gray-50 transition">
+                    <tr key={report.id} className="hover:bg-blue-50/30 transition-colors group">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="font-medium text-gray-900">
-                          {report.container.container_code}
-                        </span>
-                        <div className="text-xs text-gray-500">
-                          {report.location.sector}
+                        <div className="font-semibold text-slate-950 text-base">{report.container.container_code}</div>
+                        <div className="text-slate-500 font-medium flex items-center gap-1 mt-0.5 text-xs">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400"/>
+                            {report.location.name} • {report.location.sector}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900">
-                          {report.collector.full_name}
-                        </span>
+                      <td className="px-6 py-4 whitespace-nowrap text-slate-700 font-medium">
+                        {report.collector.full_name}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Badge
+                          className="font-semibold text-xs rounded-full px-3 py-1 border"
                           style={{
-                            backgroundColor: `${report.category.color}20`,
+                            backgroundColor: `${report.category.color}10`,
                             color: report.category.color,
-                            border: `1px solid ${report.category.color}`,
+                            borderColor: `${report.category.color}30`,
                           }}
                         >
                           {report.category.name}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap tabular-nums">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">
+                          <span className="text-base font-bold text-slate-950">
                             {report.net_weight?.toFixed(2) || "—"} kg
                           </span>
                           {report.is_weight_estimated && (
-                            <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded font-medium">
+                            <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800 font-medium text-[10px] rounded-md px-1.5 py-0.5">
                               Estimado
-                            </span>
+                            </Badge>
                           )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900">
-                          {getFillLevelBadge(report.fill_level)}
-                        </span>
+                         <Badge className={cn("font-medium text-xs rounded-md px-2.5 py-1 shadow-none border", FILL_LEVEL_MAP[report.fill_level]?.color)}>
+                          {FILL_LEVEL_MAP[report.fill_level]?.label || report.fill_level}
+                        </Badge>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-500">
-                          {formatDate(report.created_at)}
-                        </span>
+                      <td className="px-6 py-4 whitespace-nowrap text-slate-600 font-medium tabular-nums">
+                        {formatDate(report.created_at)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {report.incident ? (
-                          <Badge variant="destructive" className="flex w-fit gap-1">
-                            <AlertCircle className="w-3 h-3" />
+                          <Badge variant="destructive" className="flex items-center w-fit gap-1.5 font-semibold rounded-md px-2.5 py-1 text-xs">
+                            <AlertCircle className="w-3.5 h-3.5" />
                             {report.incident.quick_tag}
                           </Badge>
                         ) : (
-                          <span className="text-xs text-gray-500">Sin incidencia</span>
+                          <span className="text-xs text-slate-400 font-medium">Sin novedad</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -541,9 +514,10 @@ export default function ReportsPage() {
                             setSelectedReport(report);
                             setShowDetailsModal(true);
                           }}
-                          className="text-blue-600 hover:text-blue-700"
+                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-100 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-4 h-4 mr-1.5" />
+                          Detalles
                         </Button>
                       </td>
                     </tr>
@@ -555,164 +529,138 @@ export default function ReportsPage() {
         </Card>
       )}
 
-      {/* Modal de detalles */}
+      {/* MODAL DE DETALLES: AQUÍ ESTÁ LA MAGIA (Rompiendo el candado de shadcn con sm:max-w-[900px]) */}
       <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Detalles del Reporte</DialogTitle>
+        <DialogContent className="max-w-[95vw] sm:max-w-[900px] w-full max-h-[90vh] overflow-y-auto rounded-2xl p-6 md:p-8 bg-slate-50 border-slate-200">
+          <DialogHeader className="border-b border-slate-200 pb-4 mb-2 flex flex-col md:flex-row md:items-center justify-between gap-2">
+            <DialogTitle className="text-2xl font-extrabold text-slate-950 flex items-center gap-3">
+                <FileText className="w-7 h-7 text-blue-500 p-1 bg-blue-100 rounded-lg"/>
+                Detalle del Reporte
+            </DialogTitle>
+             <p className="text-slate-500 text-xs tabular-nums font-mono md:text-right">ID: {selectedReport?.id}</p>
           </DialogHeader>
 
           {selectedReport && (
-            <div className="space-y-6">
-              {/* Contenedor */}
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 mb-3">Contenedor</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600">Código</p>
-                    <p className="font-medium">
-                      {selectedReport.container.container_code}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Ubicación</p>
-                    <p className="font-medium">{selectedReport.location.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Sector</p>
-                    <p className="font-medium">{selectedReport.location.sector}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Campus</p>
-                    <p className="font-medium">{selectedReport.location.campus}</p>
-                  </div>
-                </div>
+            <div className="space-y-4 pt-2">
+              
+              {/* FILA 1: Info General (Se ajusta a 2 o 4 columnas dependiendo de la pantalla sin truncar agresivamente) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                <InfoBlock icon={PackageCheck} label="Contenedor" value={selectedReport.container.container_code} />
+                <InfoBlock icon={User} label="Recolector" value={selectedReport.collector.full_name} />
+                <InfoBlock icon={MapPin} label="Ubicación">
+                    <p className="text-sm font-bold text-slate-950 mt-0.5">{selectedReport.location.name}</p>
+                    <p className="text-[11px] font-medium text-slate-500 leading-tight">{selectedReport.location.sector}</p>
+                </InfoBlock>
+                <InfoBlock icon={CalendarDays} label="Fecha" value={formatDate(selectedReport.created_at)} />
               </div>
 
-              {/* Recolector */}
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 mb-3">Recolector</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600">Nombre</p>
-                    <p className="font-medium">{selectedReport.collector.full_name}</p>
+              {/* FILA 2: Mediciones y Categoría */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  {/* Peso Bruto */}
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-center h-full">
+                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Peso Bruto</p>
+                      <p className="text-2xl font-extrabold text-slate-950">{selectedReport.gross_weight?.toFixed(2) || "—"} <span className="text-sm font-medium text-slate-500">kg</span></p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600">ID Empleado</p>
-                    <p className="font-medium">{selectedReport.collector.employee_id}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Datos del reporte */}
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 mb-3">Mediciones</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600">Peso Bruto</p>
-                    <p className="font-medium">
-                      {selectedReport.gross_weight?.toFixed(2) || "—"} kg
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Peso Neto</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <p className="font-medium">
-                        {selectedReport.net_weight?.toFixed(2) || "—"} kg
-                      </p>
-                      {selectedReport.is_weight_estimated && (
-                        <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded font-medium">
-                          Estimado
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Nivel de Llenado</p>
-                    <p className="font-medium">
-                      {getFillLevelBadge(selectedReport.fill_level)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Estado Físico</p>
-                    <p className="font-medium">{selectedReport.physical_state}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Nivel de Separación</p>
-                    <p className="font-medium">{selectedReport.separation_level}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Fecha</p>
-                    <p className="font-medium">{formatDate(selectedReport.created_at)}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Categoría */}
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 mb-3">Categoría</h3>
-                <Badge
-                  style={{
-                    backgroundColor: `${selectedReport.category.color}20`,
-                    color: selectedReport.category.color,
-                    border: `1px solid ${selectedReport.category.color}`,
-                  }}
-                >
-                  {selectedReport.category.name}
-                </Badge>
-              </div>
-
-              {/* Condiciones */}
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 mb-3">Condiciones</h3>
-                <p className="text-sm text-gray-700">{selectedReport.condition}</p>
-              </div>
-
-              {/* Incidencia */}
-              {selectedReport.incident && (
-                <div className="border border-red-200 rounded-lg p-4 bg-red-50">
-                  <h3 className="font-semibold text-red-900 mb-3 flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5" />
-                    Incidencia Reportada
-                  </h3>
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <p className="text-red-700">Tag</p>
-                      <Badge variant="destructive">{selectedReport.incident.quick_tag}</Badge>
-                    </div>
-                    <div>
-                      <p className="text-red-700">Descripción</p>
-                      <p className="text-gray-900">{selectedReport.incident.description}</p>
-                    </div>
-                    <div>
-                      <p className="text-red-700">Status</p>
-                      <p className="text-gray-900 capitalize">
-                        {selectedReport.incident.status}
-                      </p>
-                    </div>
-                    {selectedReport.incident.photo_url && (
-                      <div className="mt-4">
-                        <p className="text-sm font-medium text-red-700 mb-2">
-                          Foto de Incidencia
-                        </p>
-                        <img
-                          src={selectedReport.incident.photo_url}
-                          alt="Foto incidencia"
-                          className="w-full h-64 object-cover rounded-lg border border-gray-200"
-                        />
-                        <a
-                          href={selectedReport.incident.photo_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:underline mt-2 block"
-                        >
-                          Descargar foto
-                        </a>
+                  
+                  {/* Peso Neto (Corregido para que ESTIMADO no flote sobre el número) */}
+                  <div className="bg-blue-50/80 p-4 rounded-xl border border-blue-200 shadow-sm flex flex-col justify-center h-full">
+                      <div className="flex items-center justify-between mb-1">
+                          <p className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">Peso Neto</p>
+                          {selectedReport.is_weight_estimated && (
+                              <Badge className="border-amber-300 bg-amber-100 text-amber-900 font-bold text-[9px] uppercase rounded px-1.5 py-0 shadow-none">Estimado</Badge>
+                          )}
                       </div>
-                    )}
+                      <p className="text-2xl font-extrabold text-blue-800">{selectedReport.net_weight?.toFixed(2) || "—"} <span className="text-sm font-medium text-blue-600">kg</span></p>
                   </div>
+
+                  {/* Nivel de Llenado */}
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-center items-start h-full">
+                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Llenado</p>
+                      <Badge className={cn("font-bold text-sm rounded-lg px-4 py-1.5 shadow-none border w-full text-center justify-center", FILL_LEVEL_MAP[selectedReport.fill_level]?.color)}>
+                        {FILL_LEVEL_MAP[selectedReport.fill_level]?.label || selectedReport.fill_level}
+                      </Badge>
+                  </div>
+
+                  {/* Categoría */}
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-center items-start h-full">
+                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5"><Tag className="w-3.5 h-3.5"/> Categoría</p>
+                      <Badge
+                        className="font-extrabold text-sm rounded-lg px-4 py-1.5 border w-full text-center justify-center"
+                        style={{
+                          backgroundColor: `${selectedReport.category.color}15`,
+                          color: selectedReport.category.color,
+                          borderColor: `${selectedReport.category.color}40`,
+                        }}
+                      >
+                        {selectedReport.category.name}
+                      </Badge>
+                  </div>
+              </div>
+
+              {/* FILA 3: Estados y Observaciones */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm h-full">
+                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Estado Físico</p>
+                      <p className="text-sm font-bold text-slate-950 mt-1.5 capitalize">{selectedReport.physical_state || "N/A"}</p>
+                  </div>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm h-full">
+                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Separación</p>
+                      <p className="text-sm font-bold text-slate-950 mt-1.5 capitalize">{selectedReport.separation_level || "N/A"}</p>
+                  </div>
+                  <div className="md:col-span-2 bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-center h-full">
+                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Condiciones y Observaciones</p>
+                      <p className="text-slate-800 text-sm leading-snug">
+                          {selectedReport.condition || "Sin observaciones adicionales registradas."}
+                      </p>
+                  </div>
+              </div>
+
+              {/* FILA 4: Incidencia */}
+              {selectedReport.incident && (
+                <div className="border border-red-200 rounded-xl p-4 md:p-5 bg-red-50/80 shadow-sm flex flex-col md:flex-row gap-5 items-stretch mt-2">
+                  
+                  {/* Textos de la Incidencia */}
+                  <div className="flex-1 flex flex-col">
+                    <div className="flex items-center gap-2 mb-3">
+                      <AlertCircle className="w-6 h-6 text-red-600 bg-red-100 rounded-md p-1 shrink-0" />
+                      <h3 className="font-extrabold text-red-950 text-lg leading-none">Incidencia Registrada</h3>
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-2 mb-4">
+                        <Badge variant="destructive" className="font-bold text-xs px-2.5 py-0.5 rounded-md">{selectedReport.incident.quick_tag}</Badge>
+                        <Badge className="bg-white text-slate-700 border border-slate-200 shadow-none font-bold capitalize text-xs px-2.5 py-0.5 rounded-md">
+                            Estado: {selectedReport.incident.status}
+                        </Badge>
+                    </div>
+
+                    <div className="bg-white p-3 md:p-4 rounded-lg border border-red-100/80 flex-1">
+                        <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider mb-1.5">Descripción del Recolector</p>
+                        <p className="text-slate-900 text-sm leading-snug">
+                            {selectedReport.incident.description}
+                        </p>
+                    </div>
+                  </div>
+                    
+                  {/* Foto de la Incidencia */}
+                  {selectedReport.incident.photo_url && (
+                    <div className="w-full md:w-64 shrink-0 bg-white p-3 rounded-xl border border-red-100 flex flex-col h-full">
+                      <div className="flex-1 bg-slate-100/80 rounded-lg border border-slate-200 overflow-hidden mb-3">
+                          <img
+                            src={selectedReport.incident.photo_url}
+                            alt="Evidencia"
+                            className="w-full h-32 md:h-full object-cover"
+                          />
+                      </div>
+                      <Button variant="outline" size="sm" asChild className="h-9 w-full text-xs font-bold border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800 rounded-lg shadow-sm">
+                           <a href={selectedReport.incident.photo_url} target="_blank" rel="noopener noreferrer">
+                              Ver Imagen Completa
+                           </a>
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
+
             </div>
           )}
         </DialogContent>

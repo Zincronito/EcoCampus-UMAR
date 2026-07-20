@@ -373,17 +373,27 @@ async def get_reports(
             date_to_obj = (datetime.fromisoformat(date_to) + timedelta(days=1)).replace(tzinfo=MEXICO_OFFSET)
             query = query.where(CollectionRecord.created_at < date_to_obj)
         
+        # Si hay algún filtro que requiera JOINs, los hacemos UNA sola vez al principio
+        needs_container_join = category_id or location_id or campus_id
+        needs_location_join = campus_id
+
+        if needs_container_join:
+            query = query.join(Container, CollectionRecord.container_id == Container.id)
+
+        if needs_location_join:
+            query = query.join(Location, Container.location_id == Location.id)
+
         if collector_id:
             query = query.where(CollectionRecord.collector_id == collector_id)
-        
+
         if category_id:
             query = query.where(Container.waste_category_id == category_id)
-        
+
         if location_id:
             query = query.where(Container.location_id == location_id)
-        
+
         if campus_id:
-            query = query.join(Container).join(Location).where(Location.campus_id == campus_id)
+            query = query.where(Location.campus_id == campus_id)
         
         if has_incident is not None:
             from app.models.incident import Incident
