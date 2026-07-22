@@ -1,6 +1,5 @@
 "use client";
-export const dynamic = "force-dynamic"; // Evita el cacheo de la página para que siempre se muestren los reportes más recientes
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { toast } from "sonner";
 import {Loader2,Search,Filter,X,FileText,AlertCircle,Download,Eye,CalendarDays,User,MapPin,Tag,Scale,PackageCheck,} from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -79,7 +78,7 @@ const InfoBlock = ({ icon: Icon, label, value, children }: any) => (
   </div>
 );
 
-export default function ReportsPage() {
+function ReportsPageContent() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchingFilters, setFetchingFilters] = useState(false);
@@ -647,5 +646,18 @@ export default function ReportsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// Wrapper con Suspense para useSearchParams
+export default function ReportsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    }>
+      <ReportsPageContent />
+    </Suspense>
   );
 }
