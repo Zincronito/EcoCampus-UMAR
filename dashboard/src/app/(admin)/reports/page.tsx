@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic"; // Evita el cacheo de la página para que siempre se muestren los reportes más recientes
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {Loader2,Search,Filter,X,FileText,AlertCircle,Download,Eye,CalendarDays,User,MapPin,Tag,Scale,PackageCheck,} from "lucide-react";
