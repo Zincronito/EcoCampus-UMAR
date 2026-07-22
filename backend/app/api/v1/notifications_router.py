@@ -24,6 +24,7 @@ class NotificationResponse(BaseModel):
     severity: str
     is_read: bool
     created_at: datetime
+    collection_record_id: uuid.UUID | None = None
 
     class Config:
         from_attributes = True
@@ -32,7 +33,21 @@ class NotificationResponse(BaseModel):
 async def get_notifications(
     session: AsyncSession = Depends(get_db),
 ):
-    """Obtener todas las notificaciones."""
+    """
+    Obtener todas las notificaciones.
+    Auto-limpia notificaciones más viejas que 7 días antes de responder.
+    """
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy import delete as sql_delete
+
+    # Auto-borrado: eliminar notificaciones > 7 días
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    await session.execute(
+        sql_delete(Notification).where(Notification.created_at < cutoff)
+    )
+    await session.commit()
+
+    # Devolver las que quedan
     query = select(Notification).order_by(Notification.created_at.desc())
     result = await session.execute(query)
     notifications = result.scalars().all()

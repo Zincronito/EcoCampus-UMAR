@@ -212,9 +212,9 @@ async def create_collection_record(
                     notification_type=notif_data["type"],
                     severity=notif_data["severity"],
                     user_id=admin_user_id,
+                    collection_record_id=new_record.id,
                 )
                 db.add(notification)
-    
             if notifications_to_create:
                 await db.commit()
 
@@ -775,3 +775,133 @@ async def get_analytics(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@router.get("/archive-preview")
+async def preview_archive(
+    before_date: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Muestra cuántos registros se eliminarían al archivar antes de la fecha dada.
+    No borra nada.
+    """
+    try:
+        from datetime import timedelta, timezone
+        from app.models.incident import Incident
+        from app.models.notification import Notification
+
+        MEXICO_OFFSET = timezone(timedelta(hours=-6))
+        cutoff_date = datetime.fromisoformat(before_date).replace(tzinfo=MEXICO_OFFSET)
+
+        # Contar records anteriores a la fecha
+        records_query = select(CollectionRecord).where(
+            CollectionRecord.created_at < cutoff_date
+        )
+        records_result = await db.execute(records_query)
+        records = records_result.scalars().all()
+        record_ids = [r.id for r in records]
+
+        # Contar incidencias asociadas a esos records
+        incidents_count = 0
+        photo_count = 0
+        if record_ids:
+            incidents_query = select(Incident).where(
+                Incident.collection_record_id.in_(record_ids)
+            )
+            incidents_result = await db.execute(incidents_query)
+            incidents = incidents_result.scalars().all()
+            incidents_count = len(incidents)
+            photo_count = sum(1 for i in incidents if i.photo_url)
+
+        # Contar notificaciones anteriores a la fecha
+        notifications_query = select(Notification).where(
+            Notification.created_at < cutoff_date
+        )
+        notifications_result = await db.execute(notifications_query)
+        notifications_count = len(notifications_result.scalars().all())
+
+        return {
+            "before_date": before_date,
+            "records_to_delete": len(records),
+            "incidents_to_delete": incidents_count,
+            "photos_to_delete": photo_count,
+            "notifications_to_delete": notifications_count,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error en preview: {str(e)}")
+
+
+@router.delete("/archive")
+async def archive_records(
+    before_date: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Elimina permanentemente todos los registros anteriores a la fecha dada.
+    ⚠️ OPERACIÓN IRREVERSIBLE. Solo admin debe llamar este endpoint.
+    """
+    try:
+        from datetime import timedelta, timezone
+        from app.models.incident import Incident
+        from app.models.notification import Notification
+        from app.core.minio_client import delete_incident_photo
+        from sqlalchemy import delete as sql_delete
+
+        MEXICO_OFFSET = timezone(timedelta(hours=-6))
+        cutoff_date = datetime.fromisoformat(before_date).replace(tzinfo=MEXICO_OFFSET)
+
+        # Obtener records a borrar
+        records_query = select(CollectionRecord).where(
+            CollectionRecord.created_at < cutoff_date
+        )
+        records_result = await db.execute(records_query)
+        records = records_result.scalars().all()
+        record_ids = [r.id for r in records]
+
+        deleted_photos = 0
+
+        if record_ids:
+            # Obtener incidencias para borrar fotos de MinIO
+            incidents_query = select(Incident).where(
+                Incident.collection_record_id.in_(record_ids)
+            )
+            incidents_result = await db.execute(incidents_query)
+            incidents = incidents_result.scalars().all()
+
+            # Borrar fotos de MinIO
+            for incident in incidents:
+                if incident.photo_url:
+                    if await delete_incident_photo(incident.photo_url):
+                        deleted_photos += 1
+
+            # Borrar incidencias de la BD
+            await db.execute(
+                sql_delete(Incident).where(
+                    Incident.collection_record_id.in_(record_ids)
+                )
+            )
+
+        # Borrar notificaciones anteriores a la fecha
+        deleted_notifications = await db.execute(
+            sql_delete(Notification).where(Notification.created_at < cutoff_date)
+        )
+
+        # Borrar records
+        deleted_records = await db.execute(
+            sql_delete(CollectionRecord).where(
+                CollectionRecord.created_at < cutoff_date
+            )
+        )
+
+        await db.commit()
+
+        return {
+            "success": True,
+            "before_date": before_date,
+            "records_deleted": deleted_records.rowcount,
+            "notifications_deleted": deleted_notifications.rowcount,
+            "photos_deleted": deleted_photos,
+        }
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error al archivar: {str(e)}")

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";  // ← Componente Link de Next
 import { toast } from "sonner";
 import {
   Loader2,
@@ -12,6 +13,7 @@ import {
   Filter,
   X,
   Download,
+  FileText,  // ← Quitamos Link de lucide-react
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -387,14 +389,22 @@ export default function AnalyticsPage() {
             KPIs y visualización de tendencias en la recolección de residuos.
           </p>
         </div>
-        <Button
-          onClick={exportAnalyticsToCSV}
-          variant="outline"
-          className="gap-2"
-        >
-          <Download className="w-4 h-4" />
-          Exportar CSV
-        </Button>
+        <div className="flex gap-2">
+          <Link href="/analytics/historical">
+            <Button variant="outline" className="gap-2">
+              <FileText className="w-4 h-4" />
+              Datos históricos
+            </Button>
+          </Link>
+          <Button
+            onClick={exportAnalyticsToCSV}
+            variant="outline"
+            className="gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Exportar CSV
+          </Button>
+        </div>
       </div>
 
       {/* Filtros */}

@@ -9,6 +9,7 @@ interface Notification {
   severity: 'info' | 'warning' | 'critical';
   is_read: boolean;
   created_at: string;
+  collection_record_id: string | null;
 }
 
 export function useNotifications() {

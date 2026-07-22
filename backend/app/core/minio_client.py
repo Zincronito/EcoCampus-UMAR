@@ -67,3 +67,22 @@ async def upload_incident_photo(file_data: bytes, filename: str) -> str:
         
     except S3Error as e:
         raise Exception(f"Error al subir foto a MinIO: {e}")
+    
+async def delete_incident_photo(photo_url: str) -> bool:
+    """
+    Elimina una foto de incidencia de MinIO.
+    Recibe la URL completa y extrae el nombre del archivo.
+    Devuelve True si se eliminó, False si falla.
+    """
+    try:
+        # Extraer el nombre del archivo de la URL
+        # URL formato: http://host:9000/incident-photos/incident_XXX.jpg
+        filename = photo_url.split("/")[-1]
+        if not filename:
+            return False
+
+        minio_client.remove_object(MINIO_BUCKET_INCIDENTS, filename)
+        return True
+    except Exception as e:
+        print(f"⚠️ Error al eliminar foto {photo_url}: {e}")
+        return False

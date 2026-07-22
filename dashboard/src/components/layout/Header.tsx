@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getUserFromCookie } from "@/lib/api";
 import { useNotifications } from "@/hooks/useNotifications";
+import {useRouter} from "next/navigation";
 
 interface User {
   id: string;
@@ -17,7 +18,23 @@ interface User {
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
+  const router = useRouter();
   const { notifications, unreadCount, markAsRead } = useNotifications();
+
+  const handleNotificationClick = async (notif: any) => {
+    // Marcar como leída si no lo está
+    if (!notif.is_read) {
+      await markAsRead(notif.id);
+    }
+
+    // Cerrar panel de notificaciones
+    setShowNotifications(false);
+
+    // Redirigir al reporte si tiene collection_record_id
+    if (notif.collection_record_id) {
+      router.push(`/reports?highlight=${notif.collection_record_id}`);
+    }
+  };
 
   useEffect(() => {
     const userData = getUserFromCookie();
@@ -112,7 +129,7 @@ export default function Header() {
                       className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
                         !notif.is_read ? getSeverityColor(notif.severity) : ""
                       }`}
-                      onClick={() => markAsRead(notif.id)}
+                      onClick={() => handleNotificationClick(notif)}
                     >
                       <div className="flex items-start gap-3">
                         <div className={`w-2 h-2 rounded-full mt-2 ${getSeverityBadgeColor(notif.severity)}`}></div>

@@ -1,52 +1,18 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import {
-  Loader2,
-  Search,
-  Filter,
-  X,
-  FileText,
-  AlertCircle,
-  Download,
-  Eye,
-  CalendarDays,
-  User,
-  MapPin,
-  Tag,
-  Scale,
-  PackageCheck,
-} from "lucide-react";
-
+import {Loader2,Search,Filter,X,FileText,AlertCircle,Download,Eye,CalendarDays,User,MapPin,Tag,Scale,PackageCheck,} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue,} from "@/components/ui/select";
+import {Dialog,DialogContent,DialogHeader,DialogTitle,} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-
-import {
-  reportsAPI,
-  collectorsAPI,
-  campusAPI,
-  categoriesAPI,
-  locationsAPI,
-} from "@/lib/api";
+import {reportsAPI,collectorsAPI,campusAPI,categoriesAPI,locationsAPI,} from "@/lib/api";
 import type { Campus, WasteCategory, Location, Collector } from "@/types";
+import {useSearchParams} from "next/navigation";
 
 interface Report {
   id: string;
@@ -120,7 +86,6 @@ export default function ReportsPage() {
   const [campuses, setCampuses] = useState<Campus[]>([]);
   const [categories, setCategories] = useState<WasteCategory[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
-
   // Filtros
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -131,14 +96,26 @@ export default function ReportsPage() {
   const [locationFilter, setLocationFilter] = useState<string>("all");
   const [incidentFilter, setIncidentFilter] = useState<string>("all");
   const [filterWeightType, setFilterWeightType] = useState<string>("all");
-
   // Modal
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     loadData();
   }, []);
+
+  // Abre el modal automáticamente si viene ?highlight=ID en la URL
+  useEffect(() => {
+    const highlightId = searchParams.get("highlight");
+    if (highlightId && reports.length > 0) {
+      const report = reports.find((r) => r.id === highlightId);
+      if (report) {
+        setSelectedReport(report);
+        setShowDetailsModal(true);
+      }
+    }
+  }, [searchParams, reports]);
 
   const loadData = async () => {
     try {
@@ -235,8 +212,9 @@ export default function ReportsPage() {
     const headers = [
       "Fecha", "Hora", "Contenedor", "Categoría", "Ubicación", "Sector", "Campus",
       "Recolector", "Peso Bruto (kg)", "Peso Neto (kg)", "Peso Estimado",
-      "Nivel de Llenado", "Estado Físico", "Condiciones", "Nivel de Separación",
-      "Tiene Incidencia", "Descripción Incidencia",
+      "Nivel de Llenado", "Nivel de Llenado (raw)", "Estado Físico", "Condiciones",
+      "Nivel de Separación", "Tiene Incidencia", "Tipo de Incidencia",
+      "Descripción Incidencia",
     ];
 
     const rows = filteredReports.map((r) => {
@@ -254,10 +232,12 @@ export default function ReportsPage() {
         r.net_weight ?? "",
         r.is_weight_estimated ? "Sí" : "No",
         FILL_LEVEL_MAP[r.fill_level]?.label || r.fill_level,
+        r.fill_level,
         r.physical_state,
         r.condition,
         r.separation_level,
         r.incident ? "Sí" : "No",
+        r.incident?.quick_tag || "",
         r.incident?.description || "",
       ];
     });
